@@ -1,28 +1,14 @@
-
 #source https://github.com/ungil/Markowitz.jl/blob/master/examples/frontier.jl
-#Example: no short-sale
-
+#Example: # lower and upper bounds, 2 inequality constraints, 2 equality constraints
 
 using EfficientFrontier
 #using Pkg; Pkg.add("EfficientFrontier")
 #using Pkg; Pkg.add("https://github.com/PharosAbad/EfficientFrontier.jl.git")
 
-#https://stackoverflow.com/a/53030465 List of loaded/imported packages in Julia
-#filter((x) -> typeof(eval(x)) <:  Module && x ≠ :Main, names(Main,imported=true))
 if length(filter((x) -> x == :Markowitz, names(Main, imported=true))) == 0
-    #https://stackoverflow.com/questions/71595632 How include a file module in Julia 1.7?   -> First option
     include("./Markowitz.jl")
     using .Markowitz
 end
-
-#=
-if length(filter((x) -> x == :EfficientFrontier, names(Main, imported=true))) == 0
-    include("../src/EfficientFrontier.jl")
-    using .EfficientFrontier
-end
-=#
-
-
 
 assets = [ "Bonds - US Government"
            "Bonds - US Corporate"
@@ -56,28 +42,35 @@ V = [ 133.0  39.0  36.0  -17.0  -28.0   31.0   -5.0   -6.0  -34.0  -10.0  -46.0 
 
 E = [ 0.1 0.7 0.8 2.3 2.2 1.9 5.6 5.6 2.2 1.3 0.7 -0.1 4.1 7.2 ]
 
-m = markowitz(E, V, names=assets)
-unit_sum(m) # total weight = 100%
-f = frontier(m)
-display(f.weights)
+
+class = vec([:FI :FI :FI :FI :FI :FI :FI :ALT :ALT :ALT :EQ :EQ :EQ :EQ])
+m = markowitz(E, V, names=assets, # asset bounds by class: stocks -10/30, bonds 0/20, alt. 0/10
+            lower = -0.1 * (class .== :EQ),
+            upper = 0.3 * (class .== :EQ) + 0.2 * (class .== :FI) + 0.1 * (class .== :ALT))
+unit_sum(m)
+add_constraint(m, 1 * (class .== :EQ), '>', 0.3) # net equity exposure between 30% and 60%
+add_constraint(m, 1 * (class .== :EQ), '<', 0.6)
+add_constraint(m, [1 1 0 0 0 0 0 0 0 0 0 0 0 0], '=', 0.25) # US govt + Investment Grade = 25%
+
+f = frontier(m)   #Warning: tweaking mu[9] to ensure the solution is unique
+z = f.weights
+display(z)
 
 
-N = length(E)
 
-A = ones(1, N)
-b = ones(1)
-G = Matrix{Float64}(undef, 0, N)
-g = Vector{Float64}(undef, 0)
-d = zeros(Float64, N)
-u = fill(Inf, N)
-
-#aCL = Vector{sCL}(undef, 0)
+#EfficientFrontier
+E = vec(E)
+A = [1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0
+    1.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0]
+b = [1.0; 0.25]
+G = [0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 1.0 1.0 1.0 1.0
+    0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 1.0 1.0 1.0 1.0]
+G[1, :] = -G[1, :]
+g = [-0.3; 0.6]
+d = vec([-0.0 -0.0 -0.0 -0.0 -0.0 -0.0 -0.0 -0.0 -0.0 -0.0 -0.1 -0.1 -0.1 -0.1])
+u = vec([0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.1 0.1 0.1 0.3 0.3 0.3 0.3])
 
 EfficientFrontier.setup(E, V, A, b, d, u, G, g)
 aCL = EfficientFrontier.ECL()
-#display(EfficientFrontier.aCL)
-display(aCL)
-
-Z = EfficientFrontier.CornerP()
-
-#f.weights[3:end,:]-Z[2:end,:]
+display(aCL)    #there are 2  singular CL (beta is a zero vector, a line in R^(N+J+M+1) space, but a single point in mean-variance space )
+Z = EfficientFrontier.CornerP() # Kinks on the frontier due to singular CL

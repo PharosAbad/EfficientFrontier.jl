@@ -1,43 +1,14 @@
-
-#source https://github.com/ungil/Markowitz.jl/blob/master/examples/frontier.jl
-#Example: no short-sale
+#Example: CLA (Critical Line Algorithm) fail, for it only handle either one IN or one OUT
 
 
 using EfficientFrontier
 #using Pkg; Pkg.add("EfficientFrontier")
 #using Pkg; Pkg.add("https://github.com/PharosAbad/EfficientFrontier.jl.git")
 
-#https://stackoverflow.com/a/53030465 List of loaded/imported packages in Julia
-#filter((x) -> typeof(eval(x)) <:  Module && x ≠ :Main, names(Main,imported=true))
 if length(filter((x) -> x == :Markowitz, names(Main, imported=true))) == 0
-    #https://stackoverflow.com/questions/71595632 How include a file module in Julia 1.7?   -> First option
     include("./Markowitz.jl")
     using .Markowitz
 end
-
-#=
-if length(filter((x) -> x == :EfficientFrontier, names(Main, imported=true))) == 0
-    include("../src/EfficientFrontier.jl")
-    using .EfficientFrontier
-end
-=#
-
-
-
-assets = [ "Bonds - US Government"
-           "Bonds - US Corporate"
-           "Bonds - International"
-           "Bonds - High Yield"
-           "Bonds - Bank Loans"
-           "Bonds - Emerging USD Debt"
-           "Bonds - Emerging Local Debt"
-           "Alternative - Emerging FX"
-           "Alternative - Commodities"
-           "Alternative - REITs"
-           "Stocks - US Large"
-           "Stocks - US Small"
-           "Stocks - International"
-           "Stocks - Emerging" ]
 
 V = [ 133.0  39.0  36.0  -17.0  -28.0   31.0   -5.0   -6.0  -34.0  -10.0  -46.0  -68.0  -52.0  -63.0
        39.0  16.0  17.0   10.0    0.0   22.0   13.0    7.0    1.0   19.0    3.0    0.0    5.0    9.0
@@ -54,16 +25,16 @@ V = [ 133.0  39.0  36.0  -17.0  -28.0   31.0   -5.0   -6.0  -34.0  -10.0  -46.0 
       -52.0   5.0  42.0  121.0   87.0   99.0  165.0  104.0  164.0  259.0  217.0  265.0  297.0  359.0
       -63.0   9.0  50.0  165.0  119.0  145.0  225.0  142.0  239.0  322.0  269.0  342.0  359.0  556.0 ]
 
-E = [ 0.1 0.7 0.8 2.3 2.2 1.9 5.6 5.6 2.2 1.3 0.7 -0.1 4.1 7.2 ]
+#E = [ 0.1 0.7 0.8 2.3 2.2 1.9 5.6 5.6 2.2 1.3 0.7 -0.1 4.1 7.2 ]
+E0 = [7.2 0.7 0.8 2.3 2.2 1.9 5.6 5.6 7.2 1.3 0.7 -0.1 4.1 7.2] # 3 assets share the highest expected return
+E = vec(E0)
 
-m = markowitz(E, V, names=assets)
+m = markowitz(E, V)
 unit_sum(m) # total weight = 100%
-f = frontier(m)
+f = frontier(m)     #Warning: tweaking mu[8] mu[13] to ensure the solution is unique
 display(f.weights)
 
-
 N = length(E)
-
 A = ones(1, N)
 b = ones(1)
 G = Matrix{Float64}(undef, 0, N)
@@ -71,13 +42,9 @@ g = Vector{Float64}(undef, 0)
 d = zeros(Float64, N)
 u = fill(Inf, N)
 
-#aCL = Vector{sCL}(undef, 0)
-
 EfficientFrontier.setup(E, V, A, b, d, u, G, g)
 aCL = EfficientFrontier.ECL()
-#display(EfficientFrontier.aCL)
 display(aCL)
-
 Z = EfficientFrontier.CornerP()
 
-#f.weights[3:end,:]-Z[2:end,:]
+#the first corner portfolio has THREE assets, not ONE asset.   CLA's permutation method fail to work
