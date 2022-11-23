@@ -1,8 +1,9 @@
 
 #source https://github.com/ungil/Markowitz.jl/blob/master/examples/frontier.jl
 
-
-
+using EfficientFrontier
+#using Pkg; Pkg.add("EfficientFrontier")
+#using Pkg; Pkg.add("https://github.com/PharosAbad/EfficientFrontier.jl.git")
 
 #https://stackoverflow.com/a/53030465 List of loaded/imported packages in Julia
 #filter((x) -> typeof(eval(x)) <:  Module && x ≠ :Main, names(Main,imported=true))
@@ -11,10 +12,13 @@ if length(filter((x) -> x == :Markowitz, names(Main, imported=true))) == 0
     include("./Markowitz.jl")
     using .Markowitz
 end
+
+#=
 if length(filter((x) -> x == :EfficientFrontier, names(Main, imported=true))) == 0
     include("../src/EfficientFrontier.jl")
     using .EfficientFrontier
 end
+=#
 
 
 
