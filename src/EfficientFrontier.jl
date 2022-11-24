@@ -117,7 +117,8 @@ function initCL()
     #display(-x.obj_val)
     #y = ClarabelQP(E, V, -x.obj_val, A, b, d, u, G, g) #maybe nothing IN
     #y = ClarabelQP(E, V, -x.obj_val*0.999, A, b, d, u, G, g)    
-    y = ClarabelQP(E, V, x.obj_val * (2^-14 - 1), A, b, d, u, G, g)
+    #y = ClarabelQP(E, V, x.obj_val * (2^-14 - 1), A, b, d, u, G, g)
+    y = ClarabelQP(E, V, x.obj_val * (2^-18 - 1), A, b, d, u, G, g)
     if Int(y.status) != 1   #SOLVED
         error("Not able to find the max expected return efficient portfolio")
     end
