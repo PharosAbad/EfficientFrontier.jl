@@ -61,19 +61,18 @@ unit_sum(m) # total weight = 100%
 f = frontier(m)
 display(f.weights)
 
-
+# setting: no short-sale
+#=
 N = length(E)
-
 A = ones(1, N)
 b = ones(1)
 G = Matrix{Float64}(undef, 0, N)
 g = Vector{Float64}(undef, 0)
 d = zeros(Float64, N)
 u = fill(Inf, N)
-
-#aCL = Vector{sCL}(undef, 0)
-
 EfficientFrontier.setup(E, V, A, b, d, u, G, g)
+=#
+EfficientFrontier.noShortsale(E, V)
 aCL = EfficientFrontier.ECL()
 #display(EfficientFrontier.aCL)
 display(aCL)

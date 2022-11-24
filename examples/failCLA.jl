@@ -31,9 +31,13 @@ E = vec(E0)
 
 m = markowitz(E, V)
 unit_sum(m) # total weight = 100%
-f = frontier(m)     #Warning: tweaking mu[8] mu[13] to ensure the solution is unique
+f = frontier(m)     #Warning: tweaking mu[8] mu[13] to ensure the solution is unique  => perturbed method
 display(f.weights)
 
+
+
+# setting: no short-sale
+#=
 N = length(E)
 A = ones(1, N)
 b = ones(1)
@@ -43,8 +47,10 @@ d = zeros(Float64, N)
 u = fill(Inf, N)
 
 EfficientFrontier.setup(E, V, A, b, d, u, G, g)
+=#
+EfficientFrontier.noShortsale(E, V)
 aCL = EfficientFrontier.ECL()
 display(aCL)
 Z = EfficientFrontier.CornerP()
 
-#the first corner portfolio has THREE assets, not ONE asset.   CLA's permutation method fail to work
+#the first corner portfolio has THREE assets, not ONE asset.   CLA's perturbed method fail to work

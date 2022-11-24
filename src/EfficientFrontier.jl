@@ -40,7 +40,7 @@ A = ones(Float64, 1, N)
 b = ones(Float64, 1)
 G = Matrix{Float64}(undef, 0, N)
 g = Vector{Float64}(undef, 0)
-d = zeros(Float64,N)
+d = zeros(Float64, N)
 u = fill(Float64(Inf), N)
 M = length(b)
 J = length(g)
@@ -58,10 +58,10 @@ end
 function ClarabelQP(E, V, mu, Ae, be, d, u, G, g)
     N = length(E)
     iu = u .!= Inf
-    Nu = sum(iu)    
+    Nu = sum(iu)
     P = sparse(V)
     q = zeros(N)
-    A = sparse([E'; Ae; G; -Matrix{Float64}(I, N, N); Matrix{Float64}(I, N, N)[iu,:]])
+    A = sparse([E'; Ae; G; -Matrix{Float64}(I, N, N); Matrix{Float64}(I, N, N)[iu, :]])
     b = [mu; be; g; -d; u[iu]]
     cones = [Clarabel.ZeroConeT(1 + length(be)), Clarabel.NonnegativeConeT(length(g) + N + Nu)]
     settings = Clarabel.Settings()
@@ -79,7 +79,7 @@ function ClarabelLP(E, Ae, be, d, u, G, g)
     Nu = sum(iu)
     P = sparse(zeros(Float64, N, N))
     q = -E
-    A = sparse([Ae; G; -Matrix{Float64}(I, N, N); Matrix{Float64}(I, N, N)[iu,:]])
+    A = sparse([Ae; G; -Matrix{Float64}(I, N, N); Matrix{Float64}(I, N, N)[iu, :]])
     b = [be; g; -d; u[iu]]
     cones = [Clarabel.ZeroConeT(length(be)), Clarabel.NonnegativeConeT(length(g) + N + Nu)]
     settings = Clarabel.Settings()
@@ -401,7 +401,7 @@ function ECL()
             end
         else
             display(Int(S)')
-            error("Critical Line Not Fineshed")
+            error("Critical Line Not Finished")
         end
 
         #display(t)
@@ -454,7 +454,21 @@ function setup(E0, V0, A0, b0, d0, u0, G0, g0)
     global G = copy(G0)
     global g = copy(g0)
     global M = length(b)
-    global J = length(g)    
+    global J = length(g)
+end
+
+function noShortsale(E0, V0)
+    global E = vec(E0)
+    global N = length(E)
+    global V = copy(V0)
+    global A = ones(1, N)
+    global b = ones(1)
+    global d = zeros(Float64, N)
+    global u = fill(Inf, N)
+    global G = Matrix{Float64}(undef, 0, N)
+    global g = Vector{Float64}(undef, 0)
+    global M = length(b)
+    global J = length(g)
 end
 
 end
