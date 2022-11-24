@@ -45,4 +45,4 @@ with mean vector $\boldsymbol{\mu}\in\mathbb{R}^{N}$ and variance matrix $\mathb
 - __EfficientFrontier.jl__ can be added by `pkg> add https://github.com/PharosAbad/EfficientFrontier.jl.git`
 
 ## License 🔍
-This project is licensed under the MIT License - see the [LICENSE](EfficientFrontier.jl/blob/main/LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
