@@ -1,9 +1,11 @@
 ___EfficientFrontier.jl___
 
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://PharosAbad.github.io/EfficientFrontier.jl/stable/)
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://PharosAbad.github.io/EfficientFrontier.jl/dev/)
 [![Build Status](https://github.com/PharosAbad/EfficientFrontier.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/PharosAbad/EfficientFrontier.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://github.com/PharosAbad/EfficientFrontier.jl/wiki)
+<!-- 
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://PharosAbad.github.io/EfficientFrontier.jl/dev/)
 [![Coverage](https://codecov.io/gh/PharosAbad/EfficientFrontier.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/PharosAbad/EfficientFrontier.jl)
+-->
 
 <h1 align="center" margin=0px>
   Full Efficient Frontier by connecting Critical Line Segments
@@ -13,7 +15,7 @@ ___EfficientFrontier.jl___
   <a href="#features">Features</a> •
   <a href="#installation">Installation</a> •
   <a href="#license-">License</a> •
-  <a href="https://PharosAbad.github.io/EfficientFrontier.jl/stable/">Documentation</a>
+  <a href="https://github.com/PharosAbad/EfficientFrontier.jl/wiki">Documentation</a>
 </p>
 
 EfficientFrontier.jl solves the following problem:
