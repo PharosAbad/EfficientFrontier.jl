@@ -18,7 +18,7 @@ ___EfficientFrontier.jl___
   <a href="https://github.com/PharosAbad/EfficientFrontier.jl/wiki">Documentation</a>
 </p>
 
-EfficientFrontier.jl solves the following problem:
+**EfficientFrontier.jl** solves the following problem:
 
 $$
 \begin{array}
@@ -44,7 +44,11 @@ with mean vector $\boldsymbol{\mu}\in\mathbb{R}^{N}$ and variance matrix $\mathb
 * __Open Source__: Our code is available on [GitHub](https://github.com/PharosAbad/EfficientFrontier.jl) and distributed under the MIT License
 
 ## Installation
-- __EfficientFrontier.jl__ can be added by `pkg> add https://github.com/PharosAbad/EfficientFrontier.jl.git`
+__EfficientFrontier.jl__ can be added by
+
+- `import Pkg; Pkg.add("EfficientFrontier")`
+- `pkg> add EfficientFrontier`
+- `pkg> add https://github.com/PharosAbad/EfficientFrontier.jl.git` for test
 
 ## License 🔍
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
