@@ -21,6 +21,7 @@ display(norm(V - V'))
 display(rank(V))    #263
 
 
+#=  #v0.1.0
 EfficientFrontier.noShortsale(E, V)
 t0 = time()
 aCL = EfficientFrontier.ECL()
@@ -28,3 +29,14 @@ t1 = time()
 display(aCL)
 display(t1 - t0)    #0.25 seconds
 Z = EfficientFrontier.CornerP()
+=#
+
+#v0.2.0
+t0 = time()
+P = Problem(E, V; equilibrate=false)
+ts = @elapsed aCL = EfficientFrontier.ECL(P)
+aEF = EfficientFrontier.eFrontier(aCL, P)
+t1 = time()
+display(ts)   #0.20 seconds
+display(t1 - t0)    #0.25 seconds
+display(aEF.Z)

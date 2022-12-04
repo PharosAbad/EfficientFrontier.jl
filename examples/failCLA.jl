@@ -36,6 +36,7 @@ display(f.weights)
 
 
 
+#=  #v0.1.0
 # setting: no short-sale
 #=
 N = length(E)
@@ -52,5 +53,13 @@ EfficientFrontier.noShortsale(E, V)
 aCL = EfficientFrontier.ECL()
 display(aCL)
 Z = EfficientFrontier.CornerP()
+=#
+
+#v0.2.0
+P = Problem(E, V; equilibrate=false)
+ts = @elapsed aCL = EfficientFrontier.ECL(P)
+aEF = EfficientFrontier.eFrontier(aCL, P)
+display(ts)   #0.00067 seconds
+display(aEF.Z)
 
 #the first corner portfolio has THREE assets, not ONE asset.   CLA's perturbed method fail to work

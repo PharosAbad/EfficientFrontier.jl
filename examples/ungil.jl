@@ -52,7 +52,7 @@ add_constraint(m, 1 * (class .== :EQ), '>', 0.3) # net equity exposure between 3
 add_constraint(m, 1 * (class .== :EQ), '<', 0.6)
 add_constraint(m, [1 1 0 0 0 0 0 0 0 0 0 0 0 0], '=', 0.25) # US govt + Investment Grade = 25%
 
-f = frontier(m)   #Warning: tweaking mu[9] to ensure the solution is unique
+f = frontier(m)
 z = f.weights
 display(z)
 
@@ -70,7 +70,27 @@ g = [-0.3; 0.6]
 d = vec([-0.0 -0.0 -0.0 -0.0 -0.0 -0.0 -0.0 -0.0 -0.0 -0.0 -0.1 -0.1 -0.1 -0.1])
 u = vec([0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.1 0.1 0.1 0.3 0.3 0.3 0.3])
 
+#=  #v0.1.0
 EfficientFrontier.setup(E, V, A, b, d, u, G, g)
 aCL = EfficientFrontier.ECL()
 display(aCL)    #there are 2  singular CL (beta is a zero vector, a line in R^(N+J+M+1) space, but a single point in mean-variance space )
 Z = EfficientFrontier.CornerP() # Kinks on the frontier due to singular CL
+=#
+
+
+#v0.2.0
+P = Problem(E, V, u, d, G, g, A, b)
+ts = @elapsed aCL = EfficientFrontier.ECL(P)
+aEF = EfficientFrontier.eFrontier(aCL, P)
+display(ts)   #0.001 seconds
+#display(aCL)    #there are 2  singular CL (beta is a zero vector, a line in R^(N+J+M+1) space, but a single point in mean-variance space )
+display(aEF.Z)  # Kinks on the frontier due to singular CL
+
+
+#BigFloat
+Pb = Problem(convert(Vector{BigFloat},E), V, u, d, G, g, A, b)
+ts = @elapsed aCLb = EfficientFrontier.ECL(Pb)
+aEFb = EfficientFrontier.eFrontier(aCLb, Pb)
+display(ts)   #0.037 seconds, slower than Float64
+#maximum(abs.(aEFb.Z-aEF.Z))
+#maximum(abs.(z[end-15:end,:]-aEF.Z[end-15:end,:]))     #5.495603971894525e-15

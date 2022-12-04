@@ -61,6 +61,7 @@ unit_sum(m) # total weight = 100%
 f = frontier(m)
 display(f.weights)
 
+#=  #v0.1.0
 # setting: no short-sale
 #=
 N = length(E)
@@ -78,5 +79,14 @@ aCL = EfficientFrontier.ECL()
 display(aCL)
 
 Z = EfficientFrontier.CornerP()
+=#
 
-#f.weights[3:end,:]-Z[2:end,:]
+#v0.2.0
+P = Problem(E, V; equilibrate=false)
+ts = @elapsed aCL = EfficientFrontier.ECL(P)
+aEF = EfficientFrontier.eFrontier(aCL, P)
+display(ts)   #0.0006 seconds
+display(aEF.Z)
+
+
+#f.weights[3:end,:]-aEF.Z[2:end,:]

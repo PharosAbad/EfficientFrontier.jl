@@ -35,10 +35,20 @@ G[1, 4] = -0.5
 G[2, 4] = 0.5
 G[2, 5:7] .= 1.0
 
+#=  #v0.1.0
 EfficientFrontier.setup(E0, V0, A, b, d, u, G, g)
 aCL = EfficientFrontier.ECL()
 display(aCL)
 Z = EfficientFrontier.CornerP() #see Markowitz and Todd (2000), chapter 13, pp.337
+=#
+
+#v0.2.0
+#P = Problem(E0, V0, u, d, G, g, A, b)
+P = Problem(E0, V0, u, d, G, g)
+ts = @elapsed aCL = EfficientFrontier.ECL(P)
+aEF = EfficientFrontier.eFrontier(aCL, P)
+display(ts)   #0.0007 seconds
+display(aEF.Z)
 
 # the CLA in Markowitz and Todd (2000) assumes either one IN or one OUT.
 # Our code handles two or more IN and/or OUT.  The first CL in this example has: 
