@@ -18,7 +18,7 @@ using Test
     #v0.2.0
     P = Problem(E, V; equilibrate=false)
     aCL = EfficientFrontier.ECL(P)
-    aEF = EfficientFrontier.eFrontier(aCL, P)
+    aEF = eFrontier(aCL, P)
 
     @test length(aCL) == 3
     @test isapprox(aEF.Z[end,:]'*E, E[1])
