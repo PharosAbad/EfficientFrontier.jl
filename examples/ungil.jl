@@ -52,9 +52,9 @@ add_constraint(m, 1 * (class .== :EQ), '>', 0.3) # net equity exposure between 3
 add_constraint(m, 1 * (class .== :EQ), '<', 0.6)
 add_constraint(m, [1 1 0 0 0 0 0 0 0 0 0 0 0 0], '=', 0.25) # US govt + Investment Grade = 25%
 
-f = frontier(m)
-z = f.weights
-display(z)
+ts = @elapsed f = frontier(m)
+println("Markowitz CLA:  ", ts, "  seconds") #0.001 seconds
+display(f.weights)
 
 
 
@@ -81,16 +81,25 @@ Z = EfficientFrontier.CornerP() # Kinks on the frontier due to singular CL
 #v0.2.0
 P = Problem(E, V, u, d, G, g, A, b)
 ts = @elapsed aCL = EfficientFrontier.ECL(P)
-aEF = EfficientFrontier.eFrontier(aCL, P)
-display(ts)   #0.001 seconds
+aEF = eFrontier(aCL, P)
 #display(aCL)    #there are 2  singular CL (beta is a zero vector, a line in R^(N+J+M+1) space, but a single point in mean-variance space )
+println("connecting Critical Line Segments:  ", ts, "  seconds") #0.001 seconds
 display(aEF.Z)  # Kinks on the frontier due to singular CL
+
+Pt = Problem(E, V, u, d, G, g, A, b; equilibrate=true)
+ts = @elapsed aCLt = EfficientFrontier.ECL(Pt)
+aEFt = eFrontier(aCLt, Pt)
+println("equilibrate:  ", ts, "  seconds") #0.001 seconds
 
 
 #BigFloat
 Pb = Problem(convert(Vector{BigFloat},E), V, u, d, G, g, A, b)
 ts = @elapsed aCLb = EfficientFrontier.ECL(Pb)
-aEFb = EfficientFrontier.eFrontier(aCLb, Pb)
-display(ts)   #0.037 seconds, slower than Float64
-#maximum(abs.(aEFb.Z-aEF.Z))
+aEFb = eFrontier(aCLb, Pb)
+println("BigFloat:  ", ts, "  seconds")   #0.037 seconds, slower than Float64
+println("improvements  ", round.([maximum(abs.(aEFb.Z-aEF.Z)), maximum(abs.(aEFt.Z-aEF.Z))], sigdigits=3))
 #maximum(abs.(z[end-15:end,:]-aEF.Z[end-15:end,:]))     #5.495603971894525e-15
+
+println("
+For precision,  `Float64+equilibrate` is enough, it is approximate to BigFloat. However, BigFloat can be tens (30 to 70), even more than 200 times slow.
+")

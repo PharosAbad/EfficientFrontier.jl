@@ -2,7 +2,6 @@
 # Problem-Algorithm-Solver pattern
 # see https://discourse.julialang.org/t/function-depending-on-the-global-variable-inside-module/64322/10
 
-#epsD::Float64 = 2^-26    #1.490116119384765625e-08
 
 """
 
@@ -78,22 +77,6 @@ end
 sCL(args...) = sCL{Float64}(args...)
 
 
-#=
-N::Int = 7
-E = Vector{Float64}(undef, N)
-V = Matrix{Float64}(undef, 0, N)
-A = ones(Float64, 1, N)
-b = ones(Float64, 1)
-G = Matrix{Float64}(undef, 0, N)
-g = Vector{Float64}(undef, 0)
-d = zeros(Float64, N)
-u = fill(Float64(Inf), N)
-M = length(b)
-J = length(g)
-#aCL = Vector{sCL}(undef, 0)
-=#
-
-#Base.@kwdef
 """
 
         Problem(E, V; u, d, G, g, A, b, equilibrate)
@@ -133,91 +116,6 @@ struct Problem{T<:AbstractFloat}
     eV::T
 end
 
-#=
-function Problem(E, V)
-    FloatT = typeof(E).parameters[1]
-    #display(FloatT)
-    N::Int32 = length(E)
-    M::Int32 = 1
-    J::Int32 = 0
-    A = ones(FloatT, 1, N)
-    b = ones(FloatT, 1)
-    G = ones(FloatT, 0, N)
-    g = ones(FloatT, 0)
-    d = zeros(FloatT, N)
-    u = fill(FloatT(Inf), N)
-    Problem{FloatT}(E, V, u, d, G, g, A, b, N, M, J)
-end
-
-function Problem(E, V, G, g)
-    FloatT = typeof(E).parameters[1]
-    N::Int32 = length(E)
-    M::Int32 = 1
-    J::Int32 = length(g)
-    A = ones(FloatT, 1, N)
-    b = ones(FloatT, 1)
-    #G = ones(FloatT, 0, N)
-    #g = ones(FloatT, 0)
-    d = zeros(FloatT, N)
-    u = fill(FloatT(Inf), N)
-    Problem{FloatT}(E, V, u, d, G, g, A, b, N, M, J)
-end
-
-function Problem(E, V, d, u)
-    FloatT = typeof(E).parameters[1]
-    N::Int32 = length(E)
-    M::Int32 = 1
-    J::Int32 = 0
-    A = ones(FloatT, 1, N)
-    b = ones(FloatT, 1)
-    G = ones(FloatT, 0, N)
-    g = ones(FloatT, 0)
-    #d = zeros(FloatT, N)
-    #u = fill(FloatT(Inf), N)
-    Problem{FloatT}(E, V, u, d, G, g, A, b, N, M, J)
-end
-
-function Problem(E, V, d, u, G, g)
-    FloatT = typeof(E).parameters[1]
-    N::Int32 = length(E)
-    M::Int32 = length(b)
-    J::Int32 = length(g)
-    A = ones(FloatT, 1, N)
-    b = ones(FloatT, 1)
-    Problem{FloatT}(E, V, u, d, G, g, A, b, N, M, J)
-end
-
-function Problem(E, V, d, u, G, g, A, b)
-    FloatT = typeof(E).parameters[1]
-    N::Int32 = length(E)
-    M::Int32 = length(b)
-    J::Int32 = length(g)
-    Problem{FloatT}(E, V, u, d, G, g, A, b, N, M, J)
-end
-=#
-
-#=
-function Problem(E, V, args...)
-    #Problem{typeof(E[1])}(E, V, args...)    
-    Problem{typeof(E).parameters[1]}(E, V, args...)
-end
-=#
-
-#= function Problem(E, V, 
-        u = fill(typeof(E[1])(Inf), length(E)), 
-        d = zeros(typeof(E[1]), length(E)), 
-        G = ones(typeof(E[1]), 0, length(E)),
-        g = ones(typeof(E[1]), 0), 
-        A = ones(typeof(E[1]), 1, length(E)), 
-        b = ones(typeof(E[1]), 1) ) =#
-#= function Problem(E, V, 
-        u::T = fill(Inf, length(E)), 
-        d::T = zeros(length(E)), 
-        G::T = ones(0, length(E)),
-        g::T = ones(0), 
-        A::T = ones(1, length(E)), 
-        b::T = ones(1) ) where (T = typeof(E[1]))   =#
-#function Problem(E, V, 
 function Problem(E, V;
     u = fill(Inf, length(E)),
     d = zeros(length(E)),
@@ -230,9 +128,10 @@ function Problem(E, V;
     FloatT = typeof(E).parameters[1]
 
     sum(abs.(E)) == 0 && error("mean vector == 0")
+    sum(abs.(V)) == 0 && error("variance matrix == 0")
     if equilibrate
-        eE::FloatT = maximum(abs.(E))
-        eV::FloatT = maximum(abs.(V))
+        eE::FloatT = maximum(abs.(E))   #>0
+        eV::FloatT = maximum(abs.(V))   #>0
         Eq = vec(E)/eE
         Vq = V/eV
     else
@@ -276,27 +175,9 @@ function Problem(E, V;
         convert(Vector{FloatT}, vec(b)), N, M, J, equilibrate, eE, eV)
 end
 
-
-#=
-Problem(E, V, u; kwargs...) = Problem(E, V; u = u, kwargs...)
-#Problem(E, V, u, bal=false) = Problem(E, V; u = u, equilibrate = bal)
-#Problem(E, V, u, d) = Problem(E, V; u = u, d = d)  #incremental compilation may be fatally broken for this module
-Problem(E, V, u, d; kwargs...) = Problem(E, V; u = u, d = d, kwargs...)
-Problem(E, V, u, d, G, g; kwargs...) = Problem(E, V; u = u, d = d, G = G, g = g, kwargs...)
-=#
-
-#=
-#Problem(E, V, u, equilibrate=false) = Problem(E, V; u = u, equilibrate=equilibrate)
-#Problem(E, V, u) = Problem(E, V; u = u)
-Problem(E, V, u; kwargs...) = Problem(E, V; u = u, kwargs...)
-Problem(E, V, u, d, equilibrate=false) = Problem(E, V; u = u, d = d, equilibrate=equilibrate)
-Problem(E, V, u, d, G, g, equilibrate=false) = Problem(E, V; u = u, d = d, G = G, g = g, equilibrate=equilibrate)
-=#
-
 Problem(E, V, u; equilibrate=false) = Problem(E, V; u = u, equilibrate=equilibrate)
 Problem(E, V, u, d; equilibrate=false) = Problem(E, V; u = u, d = d, equilibrate=equilibrate)
 Problem(E, V, u, d, G, g; equilibrate=false) = Problem(E, V; u = u, d = d, G = G, g = g, equilibrate=equilibrate)
-
 #Problem(E, V, u, d, G, g, A, b, equilibrate=false) = Problem(E, V; u = u, d = d, G = G, g = g, A = A, b = b, equilibrate=equilibrate)
 Problem(E, V, u, d, G, g, A, b; equilibrate=false) = Problem(E, V; u = u, d = d, G = G, g = g, A = A, b = b, equilibrate=equilibrate)
 
@@ -347,7 +228,6 @@ function Settings{Float64}(; tol = 2^-26,
     tolL = 2^-26, 
     tolG = 2^-26, 
     muShft = 2^-18)
-    
     Settings{Float64}(tol, tolNorm, tolS, tolL, tolG, muShft)
 end
 
@@ -359,7 +239,6 @@ function Settings{BigFloat}(; tol = BigFloat(2)^-76 ,
     tolG = BigFloat(2)^-76, 
     #muShft = BigFloat(2)^-27)
     muShft = BigFloat(2)^-18)
-    
     Settings{BigFloat}(tol, tolNorm, tolS, tolL, tolG, muShft)
 end
 

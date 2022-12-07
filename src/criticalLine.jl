@@ -7,16 +7,18 @@ function Int(v::Vector{Status})
     return x
 end
 
-function ClarabelQP(E, V, mu, u, d, G, g, Ae, be)
-    T = typeof(E[1])
+function ClarabelQP(E::Vector{T}, V::Matrix{T}, mu::T, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, Ae::Matrix{T}, be::Vector{T}) where T
+#function ClarabelQP(E, V, mu, u, d, G, g, Ae, be)
+    #T = typeof(E[1])
     N = length(E)
     iu = u .!= Inf
-    Nu = sum(iu)
+    #Nu = sum(iu)
     P = sparse(V)
     q = zeros(T, N) #Clarabel need P, q, A, b to be in type T
     A = sparse([E'; Ae; G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]])
     b = [mu; be; g; -d; u[iu]]
-    cones = [Clarabel.ZeroConeT(1 + length(be)), Clarabel.NonnegativeConeT(length(g) + N + Nu)]
+    #cones = [Clarabel.ZeroConeT(1 + length(be)), Clarabel.NonnegativeConeT(length(g) + N + Nu)]
+    cones = [Clarabel.ZeroConeT(1 + length(be)), Clarabel.NonnegativeConeT(length(g) + N + sum(iu))]
     settings = Clarabel.Settings{T}()
     settings.verbose = false
     solver = Clarabel.Solver{T}()
@@ -24,16 +26,18 @@ function ClarabelQP(E, V, mu, u, d, G, g, Ae, be)
     Clarabel.solve!(solver)
 end
 
-function ClarabelLP(E, u, d, G, g, Ae, be)
-    T = typeof(E[1])
+function ClarabelLP(E::Vector{T}, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, Ae::Matrix{T}, be::Vector{T}) where T
+#function ClarabelLP(E, u, d, G, g, Ae, be)
+    #T = typeof(E[1])
     N = length(E)
     iu = u .!= Inf  #Float64(Inf) == BigFloat(Inf)
-    Nu = sum(iu)
+    #Nu = sum(iu)
     P = sparse(zeros(T, N, N))
     q = -E
     A = sparse([Ae; G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]])
     b = [be; g; -d; u[iu]]
-    cones = [Clarabel.ZeroConeT(length(be)), Clarabel.NonnegativeConeT(length(g) + N + Nu)]
+    #cones = [Clarabel.ZeroConeT(length(be)), Clarabel.NonnegativeConeT(length(g) + N + Nu)]
+    cones = [Clarabel.ZeroConeT(length(be)), Clarabel.NonnegativeConeT(length(g) + N + sum(iu))]
     settings = Clarabel.Settings{T}()
     settings.verbose = false
     solver = Clarabel.Solver{T}()
@@ -50,7 +54,6 @@ function getRows(A, nS)
     for r in axes(A, 1)[(begin+1):end]
         #v = @view(A[r, :])
         v = @view A[r, :]
-        #if norm(v - H' * (H' \ v)) > epsD
         if norm(v - H' * (H' \ v)) > nS.tolNorm
             R[r] = true
             #H = @view(A[R, :])
@@ -60,13 +63,18 @@ function getRows(A, nS)
     return findall(R)
 end
 
+"""
+        computeCL!(aCL::Vector{sCL{T}}, Sj::Vector{Status}, PS::Problem{T}, nS::Settings{T}) where T
 
-#function computeCL(Sj, snglOK=false)
-function computeCL!(aCL, Sj::Vector{Status}, PS, nS)
+compute the Critical Line Segment for Sj::Vector{Status}, save to aCL[end]. Return value: true if done.
+
+"""
+function computeCL!(aCL::Vector{sCL{T}}, Sj::Vector{Status}, PS::Problem{T}, nS::Settings{T}) where T
+#function computeCL!(aCL, Sj::Vector{Status}, PS::Problem, nS::Settings)
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
     (; tolL, tolG) = nS
-    #FloatT = typeof(E).parameters[1]
-    FloatT = typeof(E[1])
+    #T = typeof(E).parameters[1]
+    #T = typeof(E[1])
 
     S = Sj[1:N]
     F = (S .== IN)
@@ -98,26 +106,21 @@ function computeCL!(aCL, Sj::Vector{Status}, PS, nS)
     end
 
     EF = E[F]
-    VF = V[F, F]
-    iV = inv(VF)
+    #VF = V[F, F]
+    #iV = inv(VF)
+    iV = inv(V[F, F])
     K = length(EF)
     VBF = @view V[B, F]
 
     #c = V[F, B] * zB  #c=V_{IB}z_{B}
     c = VBF' * zB  #c=V_{IB}z_{B}
-    T = iV * AE'   #T=V_{I}⁻¹A_{I}′
-    C = inv(AE * T)   #C=(A_{I}T)⁻¹
-    TC = T * C
-    VQ = iV - T * TC'    #Q=I-A_{I}′CT′   V_{I}⁻¹Q=V_{I}⁻¹-TCT′
+    mT = iV * AE'   #T=V_{I}⁻¹A_{I}′
+    C = inv(AE * mT)   #C=(A_{I}T)⁻¹
+    TC = mT * C
+    VQ = iV - mT * TC'    #Q=I-A_{I}′CT′   V_{I}⁻¹Q=V_{I}⁻¹-TCT′
 
     alpha = TC * bE - VQ * c    #α=TCb_{E}-V_{I}⁻¹Qc
     beta = VQ * EF    #β=V_{I}⁻¹Qμ_{I}
-
-    #=
-    if !snglOK && norm(beta) < epsD    #singula
-        return false
-    end
-    =#
 
     #α_{λ}=-C(T′c+b_{E})
     alphaL = -(TC' * c + C * bE)
@@ -125,14 +128,12 @@ function computeCL!(aCL, Sj::Vector{Status}, PS, nS)
     betaL = TC' * EF
 
     #η_{B}==V_{BI}α+V_{B}z_{B}+A_{B}′α_{λ}+L(V_{BI}β-μ_{B}+A_{B}′β_{λ})
-    #gamma = V[B, F] * alpha + V[B, B] * zB + AB' * alphaL
     gamma = VBF * alpha + V[B, B] * zB + AB' * alphaL
-    #delta = V[B, F] * beta - E[B] + AB' * betaL
     delta = VBF * beta - E[B] + AB' * betaL
     #display(delta)
 
-    LE0 = Vector{Event{FloatT}}(undef, 0)
-    LE1 = Vector{Event{FloatT}}(undef, 0)
+    LE0 = Vector{Event{T}}(undef, 0)
+    LE1 = Vector{Event{T}}(undef, 0)
     ik = findall(F)
     for k in eachindex(alpha)
         j = ik[k]
@@ -141,14 +142,14 @@ function computeCL!(aCL, Sj::Vector{Status}, PS, nS)
         dL = (d[j] - h) / t
         uL = (u[j] - h) / t
         if t > tolG
-            push!(LE0, Event{FloatT}(IN, DN, j, dL))
+            push!(LE0, Event{T}(IN, DN, j, dL))
             if u[j] < Inf
-                push!(LE1, Event{FloatT}(UP, IN, j, uL))
+                push!(LE1, Event{T}(UP, IN, j, uL))
             end
         elseif t < -tolG
-            push!(LE1, Event{FloatT}(DN, IN, j, dL))
+            push!(LE1, Event{T}(DN, IN, j, dL))
             if u[j] < Inf
-                push!(LE0, Event{FloatT}(IN, UP, j, uL))
+                push!(LE0, Event{T}(IN, UP, j, uL))
             end
         else
             if !(d[j] < h < u[j])
@@ -166,15 +167,15 @@ function computeCL!(aCL, Sj::Vector{Status}, PS, nS)
         dL = -h / t
         if t > tolG
             if D[j]
-                push!(LE0, Event{FloatT}(DN, IN, j, dL))
+                push!(LE0, Event{T}(DN, IN, j, dL))
             else
-                push!(LE1, Event{FloatT}(IN, UP, j, dL))
+                push!(LE1, Event{T}(IN, UP, j, dL))
             end
         elseif t < -tolG
             if D[j]
-                push!(LE1, Event{FloatT}(IN, DN, j, dL))
+                push!(LE1, Event{T}(IN, DN, j, dL))
             else
-                push!(LE0, Event{FloatT}(UP, IN, j, dL))
+                push!(LE0, Event{T}(UP, IN, j, dL))
             end
         else
             if (D[j] && h <= 0) || (U[j] && h >= 0)
@@ -195,9 +196,9 @@ function computeCL!(aCL, Sj::Vector{Status}, PS, nS)
         h = zoA[k]
         dL = -h / t
         if t > tolG
-            push!(LE0, Event{FloatT}(OE, EO, j, dL))
+            push!(LE0, Event{T}(OE, EO, j, dL))
         elseif t < -tolG
-            push!(LE1, Event{FloatT}(EO, OE, j, dL))
+            push!(LE1, Event{T}(EO, OE, j, dL))
         else
             if h <= 0
                 return false
@@ -233,9 +234,9 @@ function computeCL!(aCL, Sj::Vector{Status}, PS, nS)
             h = Lda[k]
             dL = -h / t
             if t > tolG
-                push!(LE0, Event{FloatT}(EO, OE, j, dL))
+                push!(LE0, Event{T}(EO, OE, j, dL))
             elseif t < -tolG
-                push!(LE1, Event{FloatT}(OE, EO, j, dL))
+                push!(LE1, Event{T}(OE, EO, j, dL))
             else
                 if h <= 0
                     return false
@@ -244,8 +245,8 @@ function computeCL!(aCL, Sj::Vector{Status}, PS, nS)
         end
     end
 
-    L0::FloatT = -Inf
-    I0 = Vector{Event{FloatT}}(undef, 0)
+    L0::T = -Inf
+    I0 = Vector{Event{T}}(undef, 0)
     nL0 = length(LE0)
     if nL0 > 0
         LE0 = sort(LE0, by=x -> x.L, rev=true)
@@ -258,8 +259,8 @@ function computeCL!(aCL, Sj::Vector{Status}, PS, nS)
         L0 = 0.0
     end
 
-    L1::FloatT = Inf
-    I1 = Vector{Event{FloatT}}(undef, 0)
+    L1::T = Inf
+    I1 = Vector{Event{T}}(undef, 0)
     nL1 = length(LE1)
     if nL1 > 0
         LE1 = sort(LE1, by=x -> x.L)
@@ -293,7 +294,7 @@ function computeCL!(aCL, Sj::Vector{Status}, PS, nS)
         end
     end
 
-    push!(aCL, sCL(copy(Sj), K, L1, I1, L0, I0, alpha, beta))
+    push!(aCL, sCL{T}(copy(Sj), K, L1, I1, L0, I0, alpha, beta))
     return true
 end
 
@@ -304,9 +305,7 @@ function initCL!(aCL, PS, nS)
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
     (; tolS, muShft) = nS
 
-    #return d
     x = ClarabelLP(E, u, d, G, g, A, b)
-    
     if Int(x.status) != 1   #SOLVED
         error("Not able to find the max expected return of efficient frontier")
     end
@@ -315,13 +314,14 @@ function initCL!(aCL, PS, nS)
         error("Not able to find the max expected return efficient portfolio")
     end
     
-    Y = y.s    
+    Y = y.s
     #display(Y')
     iu = u .!= Inf
-    Nu = sum(iu)
+    #Nu = sum(iu)
     D = Y[(1:N).+(M+J+1)] .< tolS
     U = falses(N)
-    U[iu] = Y[(1:Nu).+(M+J+N+1)] .< tolS
+    #U[iu] = Y[(1:Nu).+(M+J+N+1)] .< tolS
+    U[iu] = Y[(1:sum(iu)).+(M+J+N+1)] .< tolS
     #F = .!(U .| D)
     S = fill(IN, N)
     S[D] .= DN
@@ -330,12 +330,8 @@ function initCL!(aCL, PS, nS)
     Og = Y[(1:J).+(M+1)] .> tolS
     Se[Og] .= OE
     Sj = [S; Se]
-    #return Sj
-    # to do 直到 IN 不为空，然后 往上追溯到 I1 为空 2022-11-21 09:46:41
-
     #display(Int(Status[IN, UP, DN, IN, DN, DN, UP, UP, DN, DN, DN, DN, UP, UP, OE, OE])' - Int(Sj)')
     #error("Debug ...")
-    #computeCL(Sj, true)
     computeCL!(aCL, Sj, PS, nS)
 
 end
@@ -362,10 +358,8 @@ the return aCL has the follwing structure
         end
 
 """
-function ECL(PS; numSettings = Settings(PS))
-    #global aCL = Vector{sCL}(undef, 0)
+function ECL(PS::Problem; numSettings = Settings(PS))
     aCL = Vector{sCL{typeof(PS).parameters[1]}}(undef, 0)
-    #return aCL
     if !initCL!(aCL, PS, numSettings)
         error("Not able to find the first Critical Line")
     end
@@ -373,7 +367,6 @@ function ECL(PS; numSettings = Settings(PS))
     while true
         S = copy(t.S)
         q = t.I0
-
         for k in eachindex(q)
             c = q[k]
             To = c.To
@@ -383,10 +376,7 @@ function ECL(PS; numSettings = Settings(PS))
             end
             S[id] = To
         end
-
         #display(Int(S)')
-        #if computeCL(S, true)
-        #if computeCL(S)
         if computeCL!(aCL, S, PS, numSettings)
             t = aCL[end]
             if t.L0 <= 0
@@ -396,10 +386,45 @@ function ECL(PS; numSettings = Settings(PS))
             display(Int(S)')
             error("Critical Line Not Finished")
         end
-
         #display(t)
         #error("Debug ...")
     end
-    #return true
     return aCL
 end
+
+
+"""
+
+        ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings = Settings(PS))  where T
+
+compute all the Critical Line Segments, given the first one in aCL[end]. Return value: true if done
+
+"""
+
+function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings = Settings(PS))  where T
+#function ECL!(aCL, PS; numSettings = Settings(PS))
+    t = aCL[end]
+    while true
+        S = copy(t.S)
+        q = t.I0
+        for k in eachindex(q)
+            c = q[k]
+            To = c.To
+            id = c.id
+            if To == EO || To == OE
+                id += PS.N
+            end
+            S[id] = To
+        end
+        if computeCL!(aCL, S, PS, numSettings)
+            t = aCL[end]
+            if t.L0 <= 0
+                break
+            end
+        else
+            return false
+        end
+    end
+    return true
+end
+

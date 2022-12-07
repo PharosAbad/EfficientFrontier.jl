@@ -42,15 +42,56 @@ display(aCL)
 Z = EfficientFrontier.CornerP() #see Markowitz and Todd (2000), chapter 13, pp.337
 =#
 
+println("--- Markowitz and Todd (2000), chapter 13, pp.337 --- ")
+#=
+if length(filter((x) -> x == :Markowitz, names(Main, imported=true))) == 0
+   include("./Markowitz.jl")
+   using .Markowitz
+end
+m = markowitz(E, V, lower=d, upper=u)
+unit_sum(m)
+add_constraint(m, G[1,:], '<', g[1])
+add_constraint(m, G[2,:], '<', g[2])
+ts = @elapsed f = frontier(m)
+println("Markowitz CLA:  ", ts, "  seconds")    #0.0007 seconds
+display(f.weights)
+=#
+
 #v0.2.0
 #P = Problem(E0, V0, u, d, G, g, A, b)
 P = Problem(E0, V0, u, d, G, g)
 ts = @elapsed aCL = EfficientFrontier.ECL(P)
-aEF = EfficientFrontier.eFrontier(aCL, P)
-display(ts)   #0.0007 seconds
+aEF = eFrontier(aCL, P)
+println("connecting Critical Line Segments:  ", ts, "  seconds")   #0.0006 seconds
 display(aEF.Z)
 
 # the CLA in Markowitz and Todd (2000) assumes either one IN or one OUT.
 # Our code handles two or more IN and/or OUT.  The first CL in this example has: 
 # Event[Event(UP, IN, 2, 2.494839663636366), Event(DN, IN, 10, 2.494839663636377)]. 
 # Because the first Corner Portfolio is on the boundary, there is no IN assets
+#aCL[1].I1[1].L - aCL[1].I1[2].L    #-1.1102230246251565e-14
+
+#BigFloat
+Pb = Problem(convert(Vector{BigFloat}, E0), V0, u, d, G, g)
+ts = @elapsed aCLb = EfficientFrontier.ECL(Pb, numSettings = Settings{BigFloat}(tolL = BigFloat(2)^-51))
+aEFb = eFrontier(aCLb, Pb)
+println("BigFloat:  ", ts, "  seconds")   #0.020 seconds
+#display(aEFb.Z)
+#maximum(abs.(aEFb.Z-aEF.Z))   #3.344546861683284e-15
+
+#=
+aCLb[1].I1
+2-element Vector{Event{BigFloat}}:
+ Event{BigFloat}(UP, IN, 2, 2.494839663636366245529450347001271614280350227856738443120461658250300005883868)
+ Event{BigFloat}(DN, IN, 10, 2.494839663636366495420530397802951875034152818858742312229266642281434186751242)
+=#
+#aCLb[1].I1[1].L - aCLb[1].I1[2].L  #-2.498910800508016802607538025910020038691088049840311341808673741032753977364765e-16
+#for BigFloat, default tolL = BigFloat(2)^-76 = 1.32348898008484427979425390731194056570529937744140625e-23
+
+println("Asset 2 and 10 go IN at the same time, NOT ONE at each time")
+display(aCLb[1].I1)
+
+println("
+the CLA in Markowitz and Todd (2000) assumes either one IN or one OUT (if and only if one asset changes state).
+Our code handles two or more IN and/or OUT (allow any number of changes concurrently).
+")

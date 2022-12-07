@@ -31,7 +31,8 @@ E = vec(E0)
 
 m = markowitz(E, V)
 unit_sum(m) # total weight = 100%
-f = frontier(m)     #Warning: tweaking mu[8] mu[13] to ensure the solution is unique  => perturbed method
+ts = @elapsed f = frontier(m)   #Warning: tweaking mu[8] mu[13] to ensure the solution is unique  => perturbed method
+println("Markowitz CLA:  ", ts, "  seconds")    #0.00059 seconds
 display(f.weights)
 
 
@@ -58,8 +59,11 @@ Z = EfficientFrontier.CornerP()
 #v0.2.0
 P = Problem(E, V; equilibrate=false)
 ts = @elapsed aCL = EfficientFrontier.ECL(P)
-aEF = EfficientFrontier.eFrontier(aCL, P)
-display(ts)   #0.00067 seconds
+aEF = eFrontier(aCL, P)
+println("connecting Critical Line Segments:  ", ts, "  seconds")   #0.00056 seconds
 display(aEF.Z)
 
-#the first corner portfolio has THREE assets, not ONE asset.   CLA's perturbed method fail to work
+println("
+the first corner portfolio has THREE assets, not ONE asset.   CLA's perturbed method fail to work
+the first four corner portfolios by Markowitz's CLA are wrong, the corresponding critical lines violate the KKT conditions
+")

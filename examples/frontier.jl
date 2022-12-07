@@ -58,7 +58,8 @@ E = [ 0.1 0.7 0.8 2.3 2.2 1.9 5.6 5.6 2.2 1.3 0.7 -0.1 4.1 7.2 ]
 
 m = markowitz(E, V, names=assets)
 unit_sum(m) # total weight = 100%
-f = frontier(m)
+ts = @elapsed f = frontier(m)
+println("Markowitz CLA:  ", ts, "  seconds")    #0.00049  seconds
 display(f.weights)
 
 #=  #v0.1.0
@@ -84,9 +85,9 @@ Z = EfficientFrontier.CornerP()
 #v0.2.0
 P = Problem(E, V; equilibrate=false)
 ts = @elapsed aCL = EfficientFrontier.ECL(P)
-aEF = EfficientFrontier.eFrontier(aCL, P)
-display(ts)   #0.0006 seconds
+aEF = eFrontier(aCL, P)
+println("connecting Critical Line Segments:  ", ts, "  seconds")   #0.0006 seconds
 display(aEF.Z)
-
+println("NOTE: a kink in second row")
 
 #f.weights[3:end,:]-aEF.Z[2:end,:]
