@@ -7,8 +7,8 @@ function Int(v::Vector{Status})
     return x
 end
 
-function ClarabelQP(E::Vector{T}, V::Matrix{T}, mu::T, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, Ae::Matrix{T}, be::Vector{T}) where T
-#function ClarabelQP(E, V, mu, u, d, G, g, Ae, be)
+function ClarabelQP(E::Vector{T}, V::Matrix{T}, mu::T, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, Ae::Matrix{T}, be::Vector{T}) where {T}
+    #function ClarabelQP(E, V, mu, u, d, G, g, Ae, be)
     #T = typeof(E[1])
     N = length(E)
     iu = u .!= Inf
@@ -26,8 +26,8 @@ function ClarabelQP(E::Vector{T}, V::Matrix{T}, mu::T, u::Vector{T}, d::Vector{T
     Clarabel.solve!(solver)
 end
 
-function ClarabelLP(E::Vector{T}, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, Ae::Matrix{T}, be::Vector{T}) where T
-#function ClarabelLP(E, u, d, G, g, Ae, be)
+function ClarabelLP(E::Vector{T}, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, Ae::Matrix{T}, be::Vector{T}) where {T}
+    #function ClarabelLP(E, u, d, G, g, Ae, be)
     #T = typeof(E[1])
     N = length(E)
     iu = u .!= Inf  #Float64(Inf) == BigFloat(Inf)
@@ -64,27 +64,27 @@ function getRows(A, nS)
 end
 
 """
-        computeCL!(aCL::Vector{sCL{T}}, Sj::Vector{Status}, PS::Problem{T}, nS::Settings{T}) where T
+        computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::Settings{T}) where T
 
-compute the Critical Line Segment for Sj::Vector{Status}, save to aCL[end]. Return value: true if done.
+compute the Critical Line Segment for S::Vector{Status}, save to aCL[end]. Return value: true if done.
 
 """
-function computeCL!(aCL::Vector{sCL{T}}, Sj::Vector{Status}, PS::Problem{T}, nS::Settings{T}) where T
-#function computeCL!(aCL, Sj::Vector{Status}, PS::Problem, nS::Settings)
+function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::Settings{T}) where {T}
+    #function computeCL!(aCL, S::Vector{Status}, PS::Problem, nS::Settings)
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
     (; tolL, tolG) = nS
     #T = typeof(E).parameters[1]
     #T = typeof(E[1])
 
-    S = Sj[1:N]
-    F = (S .== IN)
+    Sv = @view S[1:N]
+    F = (Sv .== IN)
     if sum(F) < 1   #IN is empty
         return false
     end
     B = .!F
-    D = (S .== DN)
-    U = (S .== UP)
-    Se = Sj[(N.+(1:J))]
+    D = (Sv .== DN)
+    U = (Sv .== UP)
+    Se = @view S[(N.+(1:J))]
     Eg = (Se .== EO)
     Og = (Se .== OE)
     #GE = @view(G[Eg, :])
@@ -105,10 +105,13 @@ function computeCL!(aCL::Vector{sCL{T}}, Sj::Vector{Status}, PS::Problem{T}, nS:
         AB = AB[rb, :]
     end
 
-    EF = E[F]
-    #VF = V[F, F]
-    #iV = inv(VF)
-    iV = inv(V[F, F])
+    EF = @view E[F]
+
+    VF = @view V[F, F]
+    #iV = inv(VF)   #ERROR: MethodError: no method matching factorize(::SubArray{Float64, 2, Matrix{Float64}, Tuple{Vector{Int64}, Vector{Int64}}, false})
+    iV = inv(Symmetric(VF))
+    #iV = inv(V[F, F])
+
     K = length(EF)
     VBF = @view V[B, F]
 
@@ -116,6 +119,7 @@ function computeCL!(aCL::Vector{sCL{T}}, Sj::Vector{Status}, PS::Problem{T}, nS:
     c = VBF' * zB  #c=V_{IB}z_{B}
     mT = iV * AE'   #T=V_{I}⁻¹A_{I}′
     C = inv(AE * mT)   #C=(A_{I}T)⁻¹
+    #C = inv(Symmetric(AE * mT))   #C=(A_{I}T)⁻¹
     TC = mT * C
     VQ = iV - mT * TC'    #Q=I-A_{I}′CT′   V_{I}⁻¹Q=V_{I}⁻¹-TCT′
 
@@ -294,14 +298,14 @@ function computeCL!(aCL::Vector{sCL{T}}, Sj::Vector{Status}, PS::Problem{T}, nS:
         end
     end
 
-    push!(aCL, sCL{T}(copy(Sj), K, L1, I1, L0, I0, alpha, beta))
+    push!(aCL, sCL{T}(copy(S), K, L1, I1, L0, I0, alpha, beta))
     return true
 end
 
 
 
 function initCL!(aCL, PS, nS)
-    
+
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
     (; tolS, muShft) = nS
 
@@ -313,7 +317,7 @@ function initCL!(aCL, PS, nS)
     if Int(y.status) != 1   #SOLVED
         error("Not able to find the max expected return efficient portfolio")
     end
-    
+
     Y = y.s
     #display(Y')
     iu = u .!= Inf
@@ -323,16 +327,30 @@ function initCL!(aCL, PS, nS)
     #U[iu] = Y[(1:Nu).+(M+J+N+1)] .< tolS
     U[iu] = Y[(1:sum(iu)).+(M+J+N+1)] .< tolS
     #F = .!(U .| D)
+    #=
     S = fill(IN, N)
     S[D] .= DN
     S[U] .= UP
     Se = fill(EO, J)
     Og = Y[(1:J).+(M+1)] .> tolS
     Se[Og] .= OE
-    Sj = [S; Se]
-    #display(Int(Status[IN, UP, DN, IN, DN, DN, UP, UP, DN, DN, DN, DN, UP, UP, OE, OE])' - Int(Sj)')
+    S = [S; Se]
+    =#
+    S = fill(IN, N + J)
+    Sv = @view S[1:N]
+    Sv[D] .= DN
+    Sv[U] .= UP
+    if J > 0
+        Se = @view S[(1:J).+N]
+        Se .= EO
+        Og = Y[(1:J).+(M+1)] .> tolS
+        Se[Og] .= OE
+        #S[(1:J).+N] = Se
+    end
+
+    #display(Int(Status[IN, UP, DN, IN, DN, DN, UP, UP, DN, DN, DN, DN, UP, UP, OE, OE])' - Int(S)')
     #error("Debug ...")
-    computeCL!(aCL, Sj, PS, nS)
+    computeCL!(aCL, S, PS, nS)
 
 end
 
@@ -358,7 +376,7 @@ the return aCL has the follwing structure
         end
 
 """
-function ECL(PS::Problem; numSettings = Settings(PS))
+function ECL(PS::Problem; numSettings=Settings(PS))
     aCL = Vector{sCL{typeof(PS).parameters[1]}}(undef, 0)
     if !initCL!(aCL, PS, numSettings)
         error("Not able to find the first Critical Line")
@@ -401,8 +419,8 @@ compute all the Critical Line Segments, given the first one in aCL[end]. Return 
 
 """
 
-function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings = Settings(PS))  where T
-#function ECL!(aCL, PS; numSettings = Settings(PS))
+function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS)) where {T}
+    #function ECL!(aCL, PS; numSettings = Settings(PS))
     t = aCL[end]
     while true
         S = copy(t.S)

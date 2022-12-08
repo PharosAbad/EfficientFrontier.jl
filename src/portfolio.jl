@@ -37,7 +37,7 @@ function eFrontier(aCL::Vector{sCL{T}}, PS::Problem{T}; tolNorm = 2^-26) where T
 
     for k in 1:nP
         t = aCL[idW[k]]
-        S = t.S[1:N]
+        S = @view t.S[1:N]
 
         F = (S .== IN)
         B = .!F

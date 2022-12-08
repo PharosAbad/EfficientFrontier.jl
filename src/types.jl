@@ -169,9 +169,9 @@ function Problem(E, V;
     Problem{FloatT}(convert(Vector{FloatT}, Eq), convert(Matrix{FloatT}, Vq),
         convert(Vector{FloatT}, vec(u)),
         convert(Vector{FloatT}, vec(d)),
-        convert(Matrix{FloatT}, G),
+        convert(Matrix{FloatT}, copy(G)),   #make a copy, just in case it is modified somewhere
         convert(Vector{FloatT}, vec(g)),
-        convert(Matrix{FloatT}, A),
+        convert(Matrix{FloatT}, copy(A)),
         convert(Vector{FloatT}, vec(b)), N, M, J, equilibrate, eE, eV)
 end
 
