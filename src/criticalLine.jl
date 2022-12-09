@@ -78,9 +78,10 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
 
     Sv = @view S[1:N]
     F = (Sv .== IN)
-    if sum(F) < 1   #IN is empty
-        return false
-    end
+    #= if sum(F) < 1   #IN is empty
+        #return false
+        return BoundaryCP!(aCL, copy(S), PS, nS)
+    end =#
     B = .!F
     D = (Sv .== DN)
     U = (Sv .== UP)
@@ -104,22 +105,54 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
         bE = bE[rb]
         AB = AB[rb, :]
     end
+    K = sum(F)
+    if K < size(AE,1)    #infeasible
+        return false
+    end
 
     EF = @view E[F]
 
-    VF = @view V[F, F]
-    #iV = inv(VF)   #ERROR: MethodError: no method matching factorize(::SubArray{Float64, 2, Matrix{Float64}, Tuple{Vector{Int64}, Vector{Int64}}, false})
-    iV = inv(Symmetric(VF))
+    
     #iV = inv(V[F, F])
+    # #=
+    #VF = V[F, F]
+    #iV = inv(VF)
+    VF = @view V[F, F]
+    #iV = inv(Symmetric(VF))
+    iV = inv(cholesky(VF))  #make sure iV is symmetric
+    # =#
+    #=
+    https://discourse.julialang.org/t/inverse-of-a-symmetric-matrix-is-not-symmetric/10132/5
+    https://groups.google.com/g/julia-users/c/QBXmLGQp3Mw/m/IPXaxh-6Fk0J	you are telling Julia that your matrix is positive definite and Julia will exploit that to give you a fast inverse which is also positive definite.
+    https://scicomp.stackexchange.com/a/35645	best method is really application dependent
+    =#
 
-    K = length(EF)
+    #= 
+    VF = @view V[F, F]
+    #iV = inv(VF)   #ERROR: MethodError: no method matching factorize(::SubArray{Float64, 2, Matrix{Float64}, Tuple{Vector{Int64}, Vector{Int64}}, false})    
+    iV = inv(Symmetric(VF))
+    =#
+    
+    
+
+    #K = length(EF)
     VBF = @view V[B, F]
 
     #c = V[F, B] * zB  #c=V_{IB}z_{B}
     c = VBF' * zB  #c=V_{IB}z_{B}
     mT = iV * AE'   #T=V_{I}⁻¹A_{I}′
-    C = inv(AE * mT)   #C=(A_{I}T)⁻¹
-    #C = inv(Symmetric(AE * mT))   #C=(A_{I}T)⁻¹
+    #C = inv(AE * mT)   #C=(A_{I}T)⁻¹
+
+    # #=
+    #C = inv(Symmetric(AE * mT))   #C=(A_{I}T)⁻¹    
+    C = AE * mT
+    C = (C+C')/2
+    C = inv(cholesky(C))
+    # =#
+
+    #AL = AE*cholesky(iV).L
+    #C = inv(cholesky(AL*AL'))  #ERROR: PosDefException: matrix is not Hermitian
+
     TC = mT * C
     VQ = iV - mT * TC'    #Q=I-A_{I}′CT′   V_{I}⁻¹Q=V_{I}⁻¹-TCT′
 
@@ -354,7 +387,44 @@ function initCL!(aCL, PS, nS)
 
 end
 
+#=
+function BoundaryCP!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::Settings{T}) where {T}
+    #S is modified too
+    (; E, V, u, d, G, g, A, b, N, M, J) = PS
+    (; tolS, muShft) = nS
 
+    Sv = @view S[1:N]
+    D = (Sv .== DN)
+    U = (Sv .== UP)
+    z = zeros(T, N)
+    z[D] = d[D]
+    z[U] = u[U]
+    mu = z' * E * (1 - muShft)
+
+    y = ClarabelQP(E, V, mu, u, d, G, g, A, b)
+    if Int(y.status) != 1   #SOLVED
+        error("Not able to find the efficient portfolio at mean: " * sprint(show, mu))
+    end
+
+    Y = y.s
+    iu = u .!= Inf
+    D .= Y[(1:N).+(M+J+1)] .< tolS
+    U .= false
+    U[iu] = Y[(1:sum(iu)).+(M+J+N+1)] .< tolS
+    #S = fill(IN, N + J)
+    S .= IN
+    Sv = @view S[1:N]
+    Sv[D] .= DN
+    Sv[U] .= UP
+    if J > 0
+        Se = @view S[(1:J).+N]
+        Se .= EO
+        Og = Y[(1:J).+(M+1)] .> tolS
+        Se[Og] .= OE
+    end
+    computeCL!(aCL, S, PS, nS)
+end
+=#
 
 """
 
@@ -411,38 +481,109 @@ function ECL(PS::Problem; numSettings=Settings(PS))
 end
 
 
+#=
+function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS)) where T
+   #function ECL!(aCL, PS; numSettings = Settings(PS))
+   t = aCL[end]
+   while true
+       S = copy(t.S)
+       q = t.I0
+       for k in eachindex(q)
+           c = q[k]
+           To = c.To
+           id = c.id
+           if To == EO || To == OE
+               id += PS.N
+           end
+           S[id] = To
+       end
+       if computeCL!(aCL, S, PS, numSettings)
+           t = aCL[end]
+           if t.L0 <= 0
+               break
+           end
+       else
+           return false
+       end
+   end
+   return true
+end
+=#
+
+
+
 """
 
-        ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings = Settings(PS))  where T
+       ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings = Settings(PS), incL=false)  where T
 
-compute all the Critical Line Segments, given the first one in aCL[end]. Return value: true if done
+compute all the Critical Line Segments as L decreasing to 0 (increasing to +Inf if incL=true), given the first one in aCL[end]. 
+Return value: true if done
 
 """
-
-function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS)) where {T}
-    #function ECL!(aCL, PS; numSettings = Settings(PS))
+function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), incL=false) where {T}
+    (; N, M) = PS
     t = aCL[end]
     while true
         S = copy(t.S)
-        q = t.I0
-        for k in eachindex(q)
-            c = q[k]
-            To = c.To
-            id = c.id
-            if To == EO || To == OE
-                id += PS.N
+        if incL
+            q = t.I1
+            if isempty(q)
+                #return false
+                #return true
+                break
             end
-            S[id] = To
-        end
-        if computeCL!(aCL, S, PS, numSettings)
-            t = aCL[end]
-            if t.L0 <= 0
+            for k in eachindex(q)
+                c = q[k]
+                From = c.From
+                id = c.id
+                if From == EO || From == OE
+                    id += N
+                end
+                S[id] = From
+            end
+            #display(Int(S)')
+            if sum(S.== IN) < M +sum(S.== EO)
+            #if sum(S[1:N].== IN) < M
                 break
             end
         else
-            return false
+            q = t.I0
+            for k in eachindex(q)
+                c = q[k]
+                To = c.To
+                id = c.id
+                if To == EO || To == OE
+                    id += N
+                end
+                S[id] = To
+            end
+        end
+
+
+        if computeCL!(aCL, S, PS, numSettings)
+            t = aCL[end]
+            if incL
+                if isinf(t.L1)
+                    #sort!(aCL, by=x -> x.L1, rev=true)
+                    break
+                end
+                if aCL[end-1].S == t.S
+                    pop!(aCL)
+                    #sort!(aCL, by=x -> x.L1, rev=true)
+                    break
+                end
+            else
+                if t.L0 <= 0
+                    break
+                end
+            end
+        else
+            #return false
+            display(Int(S)')
+            error("Critical Line Not Finished")
         end
     end
+    sort!(aCL, by=x -> x.L1, rev=true)
     return true
 end
 

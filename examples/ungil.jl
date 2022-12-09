@@ -1,6 +1,7 @@
 #source https://github.com/ungil/Markowitz.jl/blob/master/examples/frontier.jl
 #Example: # lower and upper bounds, 2 inequality constraints, 2 equality constraints
 
+using LinearAlgebra
 using EfficientFrontier
 #using Pkg; Pkg.add("EfficientFrontier")
 #using Pkg; Pkg.add("https://github.com/PharosAbad/EfficientFrontier.jl.git")
@@ -97,9 +98,19 @@ Pb = Problem(convert(Vector{BigFloat},E), V, u, d, G, g, A, b)
 ts = @elapsed aCLb = EfficientFrontier.ECL(Pb)
 aEFb = eFrontier(aCLb, Pb)
 println("BigFloat:  ", ts, "  seconds")   #0.037 seconds, slower than Float64
-println("improvements  ", round.([maximum(abs.(aEFb.Z-aEF.Z)), maximum(abs.(aEFt.Z-aEF.Z))], sigdigits=3))
-#maximum(abs.(z[end-15:end,:]-aEF.Z[end-15:end,:]))     #5.495603971894525e-15
+#println("improvements  ", round.([maximum(abs.(aEFb.Z-aEF.Z)), maximum(abs.(aEFt.Z-aEF.Z))], sigdigits=3))
+#println("BigFloat over Float64+equilibrate, improvements: ", round(maximum(abs.(aEFb.Z-aEFt.Z)), sigdigits=3))
+println("BigFloat over Float64+equilibrate: ", round(norm(aEFb.Z-aEFt.Z), sigdigits=3))
+#println("BigFloat over Float64, improvements: ", round(maximum(abs.(aEFb.Z-aEF.Z)), sigdigits=3))
+#println("Float64+equilibrate over Float64, improvements: ", round(maximum(abs.(aEFt.Z-aEF.Z)), sigdigits=3))
+println("Float64+equilibrate over Float64: ", round(norm(aEFt.Z-aEF.Z), sigdigits=3))
+println("BigFloat over Float64: ", round(norm(aEFb.Z-aEF.Z), sigdigits=3))
+#maximum(abs.(f.weights[end-15:end,:]-aEF.Z[end-15:end,:]))
 
 println("
-For precision,  `Float64+equilibrate` is enough, it is approximate to BigFloat. However, BigFloat can be tens (30 to 70), even more than 200 times slow.
+v0.2.2  `Float64` is enough thus the default
+    `equilibrate` may improve precision if range of non-zeros in abs.(E) or abs.(V) is too large
+    `BigFloat` can be tens (30 to 70), even more than 200 times slow.
+    If precision is a problem, `Float64+equilibrate` is recommended. It is better (fast and stable) most of the time, but not always. (Due to the truncation of floating number, 
+    e.g., 1/60*50-50/60 = 0, but if scaled down the data by 10, 1/6*5-5/6 = 1.1102230246251565e-16)
 ")

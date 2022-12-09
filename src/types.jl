@@ -126,29 +126,35 @@ function Problem(E, V;
     equilibrate=false)
 
     FloatT = typeof(E).parameters[1]
-
+    N::Int32 = length(E)
+    (N, N) == size(V) || throw(DimensionMismatch("incompatible dimension: V"))
     sum(abs.(E)) == 0 && error("mean vector == 0")
     sum(abs.(V)) == 0 && error("variance matrix == 0")
+    #Eq = vec(E)     #make sure vector
+    Eq = copy(vec(E))     #make sure vector and a new copy
+    Vq = convert(Matrix{FloatT}, (V+V')/2)   #make sure symmetric
+    #@assert det(Vq)>=-sqrt(eps(FloatT)) "variance matrix has negative determinant"
+    @assert det(Vq)>=0 "variance matrix has negative determinant"
+    eE::FloatT = one(FloatT)
+    eV::FloatT = one(FloatT)
     if equilibrate
-        eE::FloatT = maximum(abs.(E))   #>0
-        eV::FloatT = maximum(abs.(V))   #>0
-        Eq = vec(E)/eE
-        Vq = V/eV
-    else
-        eE = one(FloatT)
-        eV = one(FloatT)
-        Eq = vec(E)
-        Vq = copy(V)
+        eE = maximum(abs.(Eq))   #>0
+        eV = maximum(abs.(Vq))   #>0
+        #Eq = vec(E)/eE
+        #Vq = V/eV
+        Eq ./= eE
+        Vq ./= eV
+    #else
+        #eE = one(FloatT)
+        #eV = one(FloatT)
+        #Eq = vec(E)
+        #Vq = copy(V)
     end
-
-
-    N::Int32 = length(E)
+    
     M::Int32 = length(b)
     J::Int32 = length(g)
-
     N == size(u, 1) || throw(DimensionMismatch("incompatible dimension: u"))
-    N == size(d, 1) || throw(DimensionMismatch("incompatible dimension: d"))
-    (N, N) == size(V) || throw(DimensionMismatch("incompatible dimension: V"))
+    N == size(d, 1) || throw(DimensionMismatch("incompatible dimension: d"))    
     (J, N) == size(G) || throw(DimensionMismatch("incompatible dimension: G"))
     (M, N) == size(A) || throw(DimensionMismatch("incompatible dimension: A"))
 
@@ -166,13 +172,14 @@ function Problem(E, V;
     #Problem{FloatT}(E, V, u, d, G, g, A, b, N, M, J)
     #Problem{typeof(E[1])}(vec(E), V, u, d, G, g, A, b, N, M, J)
     #Problem{typeof(E).parameters[1]}(vec(E), V, u, d, G, g, A, b, N, M, J)
-    Problem{FloatT}(convert(Vector{FloatT}, Eq), convert(Matrix{FloatT}, Vq),
-        convert(Vector{FloatT}, vec(u)),
-        convert(Vector{FloatT}, vec(d)),
+    #Problem{FloatT}(convert(Vector{FloatT}, Eq), convert(Matrix{FloatT}, Vq),
+    Problem{FloatT}(Eq, Vq,
+        convert(Vector{FloatT}, copy(vec(u)) ),
+        convert(Vector{FloatT}, copy(vec(d)) ),
         convert(Matrix{FloatT}, copy(G)),   #make a copy, just in case it is modified somewhere
-        convert(Vector{FloatT}, vec(g)),
+        convert(Vector{FloatT}, copy(vec(g)) ),
         convert(Matrix{FloatT}, copy(A)),
-        convert(Vector{FloatT}, vec(b)), N, M, J, equilibrate, eE, eV)
+        convert(Vector{FloatT}, copy(vec(b)) ), N, M, J, equilibrate, eE, eV)
 end
 
 Problem(E, V, u; equilibrate=false) = Problem(E, V; u = u, equilibrate=equilibrate)

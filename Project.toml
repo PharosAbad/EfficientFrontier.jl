@@ -1,7 +1,7 @@
 name = "EfficientFrontier"
 uuid = "cc5db6c5-6ee2-4027-b902-77472ae9c2f7"
 authors = ["Pharos Abad"]
-version = "0.2.1"
+version = "0.2.2"
 
 [deps]
 Clarabel = "61c947e1-3e6d-4ee4-985a-eec8c727bd6e"
