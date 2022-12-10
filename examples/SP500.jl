@@ -7,6 +7,8 @@ using EfficientFrontier
 using LinearAlgebra
 using Serialization
 
+println("\n--- connecting Critical Line Segments vs Markowitz's CLA  ---\n")
+
 # download https://gitlab.math.ethz.ch/maechler/CLA/-/raw/master/data/muS.sp500.rda to /tmp
 sp5h = load("/tmp/muS.sp500.rda")
 
@@ -32,17 +34,6 @@ ts = @elapsed f = frontier(m)
 println("Markowitz CLA:  ", ts, "  seconds")     #0.14 seconds
 display(f.weights)
 
-#=  #v0.1.0
-EfficientFrontier.noShortsale(E, V)
-t0 = time()
-aCL = EfficientFrontier.ECL()
-t1 = time()
-display(aCL)
-display(t1 - t0)    #0.25 seconds
-Z = EfficientFrontier.CornerP()
-=#
-
-#v0.2.0
 t0 = time()
 P = Problem(E, V; equilibrate=false)
 ts = @elapsed aCL = EfficientFrontier.ECL(P)

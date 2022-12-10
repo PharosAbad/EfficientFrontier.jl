@@ -10,6 +10,8 @@ if length(filter((x) -> x == :Markowitz, names(Main, imported=true))) == 0
     using .Markowitz
 end
 
+println("\n--- connecting Critical Line Segments vs Markowitz's CLA  ---\n")
+
 V = [ 133.0  39.0  36.0  -17.0  -28.0   31.0   -5.0   -6.0  -34.0  -10.0  -46.0  -68.0  -52.0  -63.0
        39.0  16.0  17.0   10.0    0.0   22.0   13.0    7.0    1.0   19.0    3.0    0.0    5.0    9.0
        36.0  17.0  38.0   19.0    3.0   34.0   45.0   29.0   37.0   48.0   20.0   21.0   42.0   50.0
@@ -36,27 +38,6 @@ println("Markowitz CLA:  ", ts, "  seconds")    #0.00059 seconds
 display(f.weights)
 
 
-
-#=  #v0.1.0
-# setting: no short-sale
-#=
-N = length(E)
-A = ones(1, N)
-b = ones(1)
-G = Matrix{Float64}(undef, 0, N)
-g = Vector{Float64}(undef, 0)
-d = zeros(Float64, N)
-u = fill(Inf, N)
-
-EfficientFrontier.setup(E, V, A, b, d, u, G, g)
-=#
-EfficientFrontier.noShortsale(E, V)
-aCL = EfficientFrontier.ECL()
-display(aCL)
-Z = EfficientFrontier.CornerP()
-=#
-
-#v0.2.0
 P = Problem(E, V; equilibrate=false)
 ts = @elapsed aCL = EfficientFrontier.ECL(P)
 aEF = eFrontier(aCL, P)
@@ -67,3 +48,9 @@ println("
 the first corner portfolio has THREE assets, not ONE asset.   CLA's perturbed method fail to work
 the first four corner portfolios by Markowitz's CLA are wrong, the corresponding critical lines violate the KKT conditions
 ")
+
+#=
+#find the first non-singular CL
+aCL1 = [aCL[1]]
+ECL!(aCL1, P; incL=true)
+=#

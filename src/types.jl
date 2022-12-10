@@ -130,7 +130,6 @@ function Problem(E, V;
     (N, N) == size(V) || throw(DimensionMismatch("incompatible dimension: V"))
     sum(abs.(E)) == 0 && error("mean vector == 0")
     sum(abs.(V)) == 0 && error("variance matrix == 0")
-    #Eq = vec(E)     #make sure vector
     Eq = copy(vec(E))     #make sure vector and a new copy
     Vq = convert(Matrix{FloatT}, (V+V')/2)   #make sure symmetric
     #@assert det(Vq)>=-sqrt(eps(FloatT)) "variance matrix has negative determinant"
@@ -140,15 +139,8 @@ function Problem(E, V;
     if equilibrate
         eE = maximum(abs.(Eq))   #>0
         eV = maximum(abs.(Vq))   #>0
-        #Eq = vec(E)/eE
-        #Vq = V/eV
         Eq ./= eE
         Vq ./= eV
-    #else
-        #eE = one(FloatT)
-        #eV = one(FloatT)
-        #Eq = vec(E)
-        #Vq = copy(V)
     end
     
     M::Int32 = length(b)
@@ -169,10 +161,6 @@ function Problem(E, V;
     @assert sum(d) < 1 "the sum of downside/lower bound is greater than 1"
     @assert sum(u) > 1 "the sum of upside/higher bound is less than 1"
 
-    #Problem{FloatT}(E, V, u, d, G, g, A, b, N, M, J)
-    #Problem{typeof(E[1])}(vec(E), V, u, d, G, g, A, b, N, M, J)
-    #Problem{typeof(E).parameters[1]}(vec(E), V, u, d, G, g, A, b, N, M, J)
-    #Problem{FloatT}(convert(Vector{FloatT}, Eq), convert(Matrix{FloatT}, Vq),
     Problem{FloatT}(Eq, Vq,
         convert(Vector{FloatT}, copy(vec(u)) ),
         convert(Vector{FloatT}, copy(vec(d)) ),
@@ -185,22 +173,8 @@ end
 Problem(E, V, u; equilibrate=false) = Problem(E, V; u = u, equilibrate=equilibrate)
 Problem(E, V, u, d; equilibrate=false) = Problem(E, V; u = u, d = d, equilibrate=equilibrate)
 Problem(E, V, u, d, G, g; equilibrate=false) = Problem(E, V; u = u, d = d, G = G, g = g, equilibrate=equilibrate)
-#Problem(E, V, u, d, G, g, A, b, equilibrate=false) = Problem(E, V; u = u, d = d, G = G, g = g, A = A, b = b, equilibrate=equilibrate)
 Problem(E, V, u, d, G, g, A, b; equilibrate=false) = Problem(E, V; u = u, d = d, G = G, g = g, A = A, b = b, equilibrate=equilibrate)
 
-
-
-
-#=
-Base.@kwdef struct Settings{T<:AbstractFloat}
-    tol::T = 2^-26        #general scalar
-    tolNorm::T = 2^-26    #for norms
-    tolS::T = 2^-26      #for s from Clarabel
-    tolL::T = 2^-26       #for L
-    tolG::T = 2^-26       #for Greeks (beta and gamma)
-    muShft::T = 2^-18     #shift the max mu to (1-muShft)*mu    
-end
-=#
 
 
 """

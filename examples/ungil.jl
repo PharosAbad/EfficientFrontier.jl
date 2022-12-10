@@ -43,6 +43,7 @@ V = [ 133.0  39.0  36.0  -17.0  -28.0   31.0   -5.0   -6.0  -34.0  -10.0  -46.0 
 
 E = [ 0.1 0.7 0.8 2.3 2.2 1.9 5.6 5.6 2.2 1.3 0.7 -0.1 4.1 7.2 ]
 
+println("\n--- connecting Critical Line Segments vs Markowitz's CLA  ---\n")
 
 class = vec([:FI :FI :FI :FI :FI :FI :FI :ALT :ALT :ALT :EQ :EQ :EQ :EQ])
 m = markowitz(E, V, names=assets, # asset bounds by class: stocks -10/30, bonds 0/20, alt. 0/10
@@ -71,15 +72,7 @@ g = [-0.3; 0.6]
 d = vec([-0.0 -0.0 -0.0 -0.0 -0.0 -0.0 -0.0 -0.0 -0.0 -0.0 -0.1 -0.1 -0.1 -0.1])
 u = vec([0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.1 0.1 0.1 0.3 0.3 0.3 0.3])
 
-#=  #v0.1.0
-EfficientFrontier.setup(E, V, A, b, d, u, G, g)
-aCL = EfficientFrontier.ECL()
-display(aCL)    #there are 2  singular CL (beta is a zero vector, a line in R^(N+J+M+1) space, but a single point in mean-variance space )
-Z = EfficientFrontier.CornerP() # Kinks on the frontier due to singular CL
-=#
 
-
-#v0.2.0
 P = Problem(E, V, u, d, G, g, A, b)
 ts = @elapsed aCL = EfficientFrontier.ECL(P)
 aEF = eFrontier(aCL, P)
@@ -101,8 +94,6 @@ println("BigFloat:  ", ts, "  seconds")   #0.037 seconds, slower than Float64
 #println("improvements  ", round.([maximum(abs.(aEFb.Z-aEF.Z)), maximum(abs.(aEFt.Z-aEF.Z))], sigdigits=3))
 #println("BigFloat over Float64+equilibrate, improvements: ", round(maximum(abs.(aEFb.Z-aEFt.Z)), sigdigits=3))
 println("BigFloat over Float64+equilibrate: ", round(norm(aEFb.Z-aEFt.Z), sigdigits=3))
-#println("BigFloat over Float64, improvements: ", round(maximum(abs.(aEFb.Z-aEF.Z)), sigdigits=3))
-#println("Float64+equilibrate over Float64, improvements: ", round(maximum(abs.(aEFt.Z-aEF.Z)), sigdigits=3))
 println("Float64+equilibrate over Float64: ", round(norm(aEFt.Z-aEF.Z), sigdigits=3))
 println("BigFloat over Float64: ", round(norm(aEFb.Z-aEF.Z), sigdigits=3))
 #maximum(abs.(f.weights[end-15:end,:]-aEF.Z[end-15:end,:]))

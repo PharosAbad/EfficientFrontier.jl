@@ -17,7 +17,6 @@ the return aEF has the follwing structure
 
 """
 function eFrontier(aCL::Vector{sCL{T}}, PS::Problem{T}; tolNorm = 2^-26) where T
-#function eFrontier(aCL, PS::Problem; tolNorm = 2^-26)
     (; E, V, u, d, N, eE, eV) = PS
     nL = lastindex(aCL)
     W = trues(nL)
@@ -99,14 +98,6 @@ compute the efficient portfolio given mu, returns portfolio weights z (Nx1 vecto
 function ePortfolio(mu, aEF::sEF)
     u = aEF.mu
     Z = aEF.Z
-    #=
-    if mu >= u[1]
-        return Z[1, :]
-    end
-    if mu <= u[end]
-        return Z[end, :]
-    end
-    =#
     z = zeros(size(Z,2))    
     if mu > u[1] || mu < u[end]
         fill!(z,NaN)

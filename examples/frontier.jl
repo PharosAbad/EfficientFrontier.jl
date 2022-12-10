@@ -56,33 +56,16 @@ V = [ 133.0  39.0  36.0  -17.0  -28.0   31.0   -5.0   -6.0  -34.0  -10.0  -46.0 
 
 E = [ 0.1 0.7 0.8 2.3 2.2 1.9 5.6 5.6 2.2 1.3 0.7 -0.1 4.1 7.2 ]
 
+println("\n--- connecting Critical Line Segments vs Markowitz's CLA  ---\n")
+
 m = markowitz(E, V, names=assets)
 unit_sum(m) # total weight = 100%
 ts = @elapsed f = frontier(m)
 println("Markowitz CLA:  ", ts, "  seconds")    #0.00049  seconds
 display(f.weights)
 
-#=  #v0.1.0
-# setting: no short-sale
-#=
-N = length(E)
-A = ones(1, N)
-b = ones(1)
-G = Matrix{Float64}(undef, 0, N)
-g = Vector{Float64}(undef, 0)
-d = zeros(Float64, N)
-u = fill(Inf, N)
-EfficientFrontier.setup(E, V, A, b, d, u, G, g)
-=#
-EfficientFrontier.noShortsale(E, V)
-aCL = EfficientFrontier.ECL()
-#display(EfficientFrontier.aCL)
-display(aCL)
 
-Z = EfficientFrontier.CornerP()
-=#
 
-#v0.2.0
 P = Problem(E, V; equilibrate=false)
 ts = @elapsed aCL = EfficientFrontier.ECL(P)
 aEF = eFrontier(aCL, P)

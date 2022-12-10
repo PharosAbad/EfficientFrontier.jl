@@ -35,13 +35,6 @@ G[1, 4] = -0.5
 G[2, 4] = 0.5
 G[2, 5:7] .= 1.0
 
-#=  #v0.1.0
-EfficientFrontier.setup(E0, V0, A, b, d, u, G, g)
-aCL = EfficientFrontier.ECL()
-display(aCL)
-Z = EfficientFrontier.CornerP() #see Markowitz and Todd (2000), chapter 13, pp.337
-=#
-
 println("--- Markowitz and Todd (2000), chapter 13, pp.337 --- ")
 #=
 if length(filter((x) -> x == :Markowitz, names(Main, imported=true))) == 0
@@ -57,8 +50,7 @@ println("Markowitz CLA:  ", ts, "  seconds")    #0.0007 seconds
 display(f.weights)
 =#
 
-#v0.2.0
-#P = Problem(E0, V0, u, d, G, g, A, b)
+
 P = Problem(E0, V0, u, d, G, g)
 ts = @elapsed aCL = EfficientFrontier.ECL(P)
 aEF = eFrontier(aCL, P)
@@ -82,16 +74,19 @@ println("BigFloat:  ", ts, "  seconds")   #0.020 seconds
 #=
 aCLb[1].I1
 2-element Vector{Event{BigFloat}}:
- Event{BigFloat}(UP, IN, 2, 2.494839663636366245529450347001271614280350227856738443120461658250300005883868)
- Event{BigFloat}(DN, IN, 10, 2.494839663636366495420530397802951875034152818858742312229266642281434186751242)
+ Event{BigFloat}(UP, IN, 2, 2.494839663636366245529450347001271614280350227856738443120461658250300005883108)
+ Event{BigFloat}(DN, IN, 10, 2.494839663636366495420530397802951875034152818858742312229266642281434186751967)
 =#
 #aCLb[1].I1[1].L - aCLb[1].I1[2].L  #-2.498910800508016802607538025910020038691088049840311341808673741032753977364765e-16
 #for BigFloat, default tolL = BigFloat(2)^-76 = 1.32348898008484427979425390731194056570529937744140625e-23
 
-println("Asset 2 and 10 go IN at the same time, NOT ONE at each time")
+println("\n Assets 2 and 10 go IN at the same time, NOT the case that ONE at each time")
 display(aCLb[1].I1)
 
 println("
+Because the first Corner Portfolio is on the boundary, there is no IN assets (K=0).  there must be K>=M for each CL.
+   Hence,  K>=2 assets go IN if M>=2 (M=1 in this example)
+
 the CLA in Markowitz and Todd (2000) assumes either one IN or one OUT (if and only if one asset changes state).
 Our code handles two or more IN and/or OUT (allow any number of changes concurrently).
 ")

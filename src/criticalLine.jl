@@ -8,16 +8,12 @@ function Int(v::Vector{Status})
 end
 
 function ClarabelQP(E::Vector{T}, V::Matrix{T}, mu::T, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, Ae::Matrix{T}, be::Vector{T}) where {T}
-    #function ClarabelQP(E, V, mu, u, d, G, g, Ae, be)
-    #T = typeof(E[1])
     N = length(E)
     iu = u .!= Inf
-    #Nu = sum(iu)
     P = sparse(V)
     q = zeros(T, N) #Clarabel need P, q, A, b to be in type T
     A = sparse([E'; Ae; G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]])
     b = [mu; be; g; -d; u[iu]]
-    #cones = [Clarabel.ZeroConeT(1 + length(be)), Clarabel.NonnegativeConeT(length(g) + N + Nu)]
     cones = [Clarabel.ZeroConeT(1 + length(be)), Clarabel.NonnegativeConeT(length(g) + N + sum(iu))]
     settings = Clarabel.Settings{T}()
     settings.verbose = false
@@ -27,16 +23,12 @@ function ClarabelQP(E::Vector{T}, V::Matrix{T}, mu::T, u::Vector{T}, d::Vector{T
 end
 
 function ClarabelLP(E::Vector{T}, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, Ae::Matrix{T}, be::Vector{T}) where {T}
-    #function ClarabelLP(E, u, d, G, g, Ae, be)
-    #T = typeof(E[1])
     N = length(E)
     iu = u .!= Inf  #Float64(Inf) == BigFloat(Inf)
-    #Nu = sum(iu)
     P = sparse(zeros(T, N, N))
     q = -E
     A = sparse([Ae; G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]])
     b = [be; g; -d; u[iu]]
-    #cones = [Clarabel.ZeroConeT(length(be)), Clarabel.NonnegativeConeT(length(g) + N + Nu)]
     cones = [Clarabel.ZeroConeT(length(be)), Clarabel.NonnegativeConeT(length(g) + N + sum(iu))]
     settings = Clarabel.Settings{T}()
     settings.verbose = false
@@ -46,17 +38,14 @@ function ClarabelLP(E::Vector{T}, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::V
 end
 
 function getRows(A, nS)
-    #indicate the non-redundant rows, the 1st row should be non-zeros (vector one here)
-    #H = @view(A[1:1, :])
+#indicate the non-redundant rows, the 1st row should be non-zeros (vector one here)
     H = @view A[1:1, :]
     R = falses(size(A, 1))
     R[1] = true
     for r in axes(A, 1)[(begin+1):end]
-        #v = @view(A[r, :])
         v = @view A[r, :]
         if norm(v - H' * (H' \ v)) > nS.tolNorm
             R[r] = true
-            #H = @view(A[R, :])
             H = @view A[R, :]
         end
     end
@@ -70,25 +59,17 @@ compute the Critical Line Segment for S::Vector{Status}, save to aCL[end]. Retur
 
 """
 function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::Settings{T}) where {T}
-    #function computeCL!(aCL, S::Vector{Status}, PS::Problem, nS::Settings)
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
     (; tolL, tolG) = nS
-    #T = typeof(E).parameters[1]
-    #T = typeof(E[1])
 
     Sv = @view S[1:N]
     F = (Sv .== IN)
-    #= if sum(F) < 1   #IN is empty
-        #return false
-        return BoundaryCP!(aCL, copy(S), PS, nS)
-    end =#
     B = .!F
     D = (Sv .== DN)
     U = (Sv .== UP)
     Se = @view S[(N.+(1:J))]
     Eg = (Se .== EO)
     Og = (Se .== OE)
-    #GE = @view(G[Eg, :])
     GE = @view G[Eg, :]
     AE = vcat(A[:, F], GE[:, F])
     idAE = vcat(axes(A, 1), axes(GE, 1)) # id of each constraint
@@ -113,43 +94,26 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
     EF = @view E[F]
 
     
-    #iV = inv(V[F, F])
-    # #=
-    #VF = V[F, F]
-    #iV = inv(VF)
     VF = @view V[F, F]
-    #iV = inv(Symmetric(VF))
     iV = inv(cholesky(VF))  #make sure iV is symmetric
-    # =#
     #=
     https://discourse.julialang.org/t/inverse-of-a-symmetric-matrix-is-not-symmetric/10132/5
     https://groups.google.com/g/julia-users/c/QBXmLGQp3Mw/m/IPXaxh-6Fk0J	you are telling Julia that your matrix is positive definite and Julia will exploit that to give you a fast inverse which is also positive definite.
     https://scicomp.stackexchange.com/a/35645	best method is really application dependent
-    =#
 
-    #= 
     VF = @view V[F, F]
     #iV = inv(VF)   #ERROR: MethodError: no method matching factorize(::SubArray{Float64, 2, Matrix{Float64}, Tuple{Vector{Int64}, Vector{Int64}}, false})    
     iV = inv(Symmetric(VF))
     =#
-    
-    
-
-    #K = length(EF)
     VBF = @view V[B, F]
-
     #c = V[F, B] * zB  #c=V_{IB}z_{B}
     c = VBF' * zB  #c=V_{IB}z_{B}
     mT = iV * AE'   #T=V_{I}⁻¹A_{I}′
     #C = inv(AE * mT)   #C=(A_{I}T)⁻¹
-
-    # #=
     #C = inv(Symmetric(AE * mT))   #C=(A_{I}T)⁻¹    
     C = AE * mT
     C = (C+C')/2
     C = inv(cholesky(C))
-    # =#
-
     #AL = AE*cholesky(iV).L
     #C = inv(cholesky(AL*AL'))  #ERROR: PosDefException: matrix is not Hermitian
 
@@ -167,7 +131,6 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
     #η_{B}==V_{BI}α+V_{B}z_{B}+A_{B}′α_{λ}+L(V_{BI}β-μ_{B}+A_{B}′β_{λ})
     gamma = VBF * alpha + V[B, B] * zB + AB' * alphaL
     delta = VBF * beta - E[B] + AB' * betaL
-    #display(delta)
 
     LE0 = Vector{Event{T}}(undef, 0)
     LE1 = Vector{Event{T}}(undef, 0)
@@ -338,7 +301,6 @@ end
 
 
 function initCL!(aCL, PS, nS)
-
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
     (; tolS, muShft) = nS
 
@@ -352,23 +314,10 @@ function initCL!(aCL, PS, nS)
     end
 
     Y = y.s
-    #display(Y')
     iu = u .!= Inf
-    #Nu = sum(iu)
     D = Y[(1:N).+(M+J+1)] .< tolS
     U = falses(N)
-    #U[iu] = Y[(1:Nu).+(M+J+N+1)] .< tolS
     U[iu] = Y[(1:sum(iu)).+(M+J+N+1)] .< tolS
-    #F = .!(U .| D)
-    #=
-    S = fill(IN, N)
-    S[D] .= DN
-    S[U] .= UP
-    Se = fill(EO, J)
-    Og = Y[(1:J).+(M+1)] .> tolS
-    Se[Og] .= OE
-    S = [S; Se]
-    =#
     S = fill(IN, N + J)
     Sv = @view S[1:N]
     Sv[D] .= DN
@@ -378,13 +327,8 @@ function initCL!(aCL, PS, nS)
         Se .= EO
         Og = Y[(1:J).+(M+1)] .> tolS
         Se[Og] .= OE
-        #S[(1:J).+N] = Se
     end
-
-    #display(Int(Status[IN, UP, DN, IN, DN, DN, UP, UP, DN, DN, DN, DN, UP, UP, OE, OE])' - Int(S)')
-    #error("Debug ...")
     computeCL!(aCL, S, PS, nS)
-
 end
 
 #=
@@ -481,36 +425,6 @@ function ECL(PS::Problem; numSettings=Settings(PS))
 end
 
 
-#=
-function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS)) where T
-   #function ECL!(aCL, PS; numSettings = Settings(PS))
-   t = aCL[end]
-   while true
-       S = copy(t.S)
-       q = t.I0
-       for k in eachindex(q)
-           c = q[k]
-           To = c.To
-           id = c.id
-           if To == EO || To == OE
-               id += PS.N
-           end
-           S[id] = To
-       end
-       if computeCL!(aCL, S, PS, numSettings)
-           t = aCL[end]
-           if t.L0 <= 0
-               break
-           end
-       else
-           return false
-       end
-   end
-   return true
-end
-=#
-
-
 
 """
 
@@ -528,8 +442,6 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
         if incL
             q = t.I1
             if isempty(q)
-                #return false
-                #return true
                 break
             end
             for k in eachindex(q)
@@ -541,9 +453,7 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
                 end
                 S[id] = From
             end
-            #display(Int(S)')
             if sum(S.== IN) < M +sum(S.== EO)
-            #if sum(S[1:N].== IN) < M
                 break
             end
         else
@@ -564,12 +474,10 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
             t = aCL[end]
             if incL
                 if isinf(t.L1)
-                    #sort!(aCL, by=x -> x.L1, rev=true)
                     break
                 end
                 if aCL[end-1].S == t.S
                     pop!(aCL)
-                    #sort!(aCL, by=x -> x.L1, rev=true)
                     break
                 end
             else
