@@ -7,6 +7,7 @@ function Int(v::Vector{Status})
     return x
 end
 
+#=
 function ClarabelQP(E::Vector{T}, V::Matrix{T}, mu::T, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, Ae::Matrix{T}, be::Vector{T}) where {T}
     N = length(E)
     iu = u .!= Inf
@@ -36,9 +37,10 @@ function ClarabelLP(E::Vector{T}, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::V
     Clarabel.setup!(solver, P, q, A, b, cones, settings)
     Clarabel.solve!(solver)
 end
+=#
 
 function getRows(A, nS)
-#indicate the non-redundant rows, the 1st row should be non-zeros (vector one here)
+    #indicate the non-redundant rows, the 1st row should be non-zeros (vector one here)
     H = @view A[1:1, :]
     R = falses(size(A, 1))
     R[1] = true
@@ -87,13 +89,13 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
         AB = AB[rb, :]
     end
     K = sum(F)
-    if K < size(AE,1)    #infeasible
+    if K < size(AE, 1)    #infeasible
         return false
     end
 
     EF = @view E[F]
 
-    
+
     VF = @view V[F, F]
     iV = inv(cholesky(VF))  #make sure iV is symmetric
     #=
@@ -112,7 +114,7 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
     #C = inv(AE * mT)   #C=(A_{I}T)⁻¹
     #C = inv(Symmetric(AE * mT))   #C=(A_{I}T)⁻¹    
     C = AE * mT
-    C = (C+C')/2
+    C = (C + C') / 2
     C = inv(cholesky(C))
     #AL = AE*cholesky(iV).L
     #C = inv(cholesky(AL*AL'))  #ERROR: PosDefException: matrix is not Hermitian
@@ -300,37 +302,6 @@ end
 
 
 
-function initCL!(aCL, PS, nS)
-    (; E, V, u, d, G, g, A, b, N, M, J) = PS
-    (; tolS, muShft) = nS
-
-    x = ClarabelLP(E, u, d, G, g, A, b)
-    if Int(x.status) != 1   #SOLVED
-        error("Not able to find the max expected return of efficient frontier")
-    end
-    y = ClarabelQP(E, V, x.obj_val * (muShft - 1), u, d, G, g, A, b)
-    if Int(y.status) != 1   #SOLVED
-        error("Not able to find the max expected return efficient portfolio")
-    end
-
-    Y = y.s
-    iu = u .!= Inf
-    D = Y[(1:N).+(M+J+1)] .< tolS
-    U = falses(N)
-    U[iu] = Y[(1:sum(iu)).+(M+J+N+1)] .< tolS
-    S = fill(IN, N + J)
-    Sv = @view S[1:N]
-    Sv[D] .= DN
-    Sv[U] .= UP
-    if J > 0
-        Se = @view S[(1:J).+N]
-        Se .= EO
-        Og = Y[(1:J).+(M+1)] .> tolS
-        Se[Og] .= OE
-    end
-    computeCL!(aCL, S, PS, nS)
-end
-
 #=
 function BoundaryCP!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::Settings{T}) where {T}
     #S is modified too
@@ -372,9 +343,9 @@ end
 
 """
 
-        aCL = ECL(PS::Problem; numSettings = Settings(PS))
+        aCL = ECL(PS::Problem, init=:Combinatorics; numSettings = Settings(PS))
 
-compute all the Critical Line Segments
+compute all the Critical Line Segments. Init the CL by combinatorial search (`init=:Clarabel` by Clarabel.jl, an interior point numerical solver)
 
 the return aCL has the follwing structure
 
@@ -390,7 +361,62 @@ the return aCL has the follwing structure
         end
 
 """
-function ECL(PS::Problem; numSettings=Settings(PS))
+function ECL(PS::Problem, init=:Combinatorics; numSettings=Settings(PS))
+    aCL = Vector{sCL{typeof(PS).parameters[1]}}(undef, 0)
+    if init == :Clarabel
+        #return cECL(PS; numSettings=numSettings)
+
+        #=if !initCL!(aCL, PS, numSettings)
+            error("Not able to find the first Critical Line")
+        end =#
+        initCL!(aCL, PS, numSettings)
+    else
+        cbCL!(aCL, PS; nS=numSettings)
+    end
+    if lastindex(aCL) == 0
+        error("Not able to find the first Critical Line")
+    end
+
+    ECL!(aCL, PS; numSettings=numSettings, incL=true)
+    ECL!(aCL, PS; numSettings=numSettings)
+    return aCL
+end
+
+
+function initCL!(aCL, PS, nS)
+    (; E, V, u, d, G, g, A, b, N, M, J) = PS
+    (; tolS, muShft) = nS
+
+    x = ClarabelLP(E, u, d, G, g, A, b)
+    if Int(x.status) != 1   #SOLVED
+        error("Not able to find the max expected return of efficient frontier")
+    end
+    y = ClarabelQP(E, V, x.obj_val * (muShft - 1), u, d, G, g, A, b)
+    if Int(y.status) != 1   #SOLVED
+        error("Not able to find the max expected return efficient portfolio")
+    end
+
+    Y = y.s
+    iu = u .!= Inf
+    D = Y[(1:N).+(M+J+1)] .< tolS
+    U = falses(N)
+    U[iu] = Y[(1:sum(iu)).+(M+J+N+1)] .< tolS
+    S = fill(IN, N + J)
+    Sv = @view S[1:N]
+    Sv[D] .= DN
+    Sv[U] .= UP
+    if J > 0
+        Se = @view S[(1:J).+N]
+        Se .= EO
+        Og = Y[(1:J).+(M+1)] .> tolS
+        Se[Og] .= OE
+    end
+    computeCL!(aCL, S, PS, nS)
+end
+
+#=
+function cECL(PS::Problem; numSettings=Settings(PS))
+#using ClarabelLP thr initCL!
     aCL = Vector{sCL{typeof(PS).parameters[1]}}(undef, 0)
     if !initCL!(aCL, PS, numSettings)
         error("Not able to find the first Critical Line")
@@ -423,8 +449,7 @@ function ECL(PS::Problem; numSettings=Settings(PS))
     end
     return aCL
 end
-
-
+=#
 
 """
 
@@ -437,8 +462,9 @@ Return value: true if done
 function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), incL=false) where {T}
     (; N, M) = PS
     t = aCL[end]
+    S = copy(t.S)
     while true
-        S = copy(t.S)
+        #S = copy(t.S)
         if incL
             q = t.I1
             if isempty(q)
@@ -453,7 +479,7 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
                 end
                 S[id] = From
             end
-            if sum(S.== IN) < M +sum(S.== EO)
+            if sum(S .== IN) < M + sum(S .== EO)
                 break
             end
         else
@@ -469,14 +495,15 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
             end
         end
 
-
         if computeCL!(aCL, S, PS, numSettings)
             t = aCL[end]
-            if incL
+            #= if incL
                 if isinf(t.L1)
                     break
                 end
                 if aCL[end-1].S == t.S
+                    display(Int(aCL[end-1].S)')
+                    display(Int(t.S)')
                     pop!(aCL)
                     break
                 end
@@ -484,14 +511,105 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
                 if t.L0 <= 0
                     break
                 end
+            end =#
+            if isinf(t.L1) || t.L0 <= 0
+                break
             end
+
         else
             #return false
             display(Int(S)')
             error("Critical Line Not Finished")
         end
+        S .= t.S
     end
     sort!(aCL, by=x -> x.L1, rev=true)
     return true
 end
 
+
+"""
+
+        cbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), oneCL=true, K=PS.M+PS.J+1) where T
+
+compute one or all (oneCL=false, K=PS.M) the Critical Line Segments by enumerating (combinations of Status)
+
+
+"""
+function cbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), oneCL=true, K=PS.M + PS.J + 1) where {T}
+    #(3^N -2^N -N*2^(N-1)) * 2^J cases  ( K= 0 -> 2^N ; K=1 -> N*2^(N-1))
+    (; u, N, J) = PS
+    cbk = 1:N
+    cbj = 1:J
+    B = trues(N)
+    S = fill(IN, N + J)
+    Sv = @view S[1:N]
+    Se = @view S[N.+cbj]
+    Se .= EO
+
+    for k in max(2, K):N    # k<PS.M+PS.J no degree of freedom
+        cbK = combinations(cbk, k)
+        for ii in cbK       #for IN
+            S[ii] .= IN
+            B[ii] .= false
+            ic = (B .& (u .< Inf))
+            cbb = @view cbk[ic]
+            nb = length(cbb)
+
+            if nb == 0
+                Sv[B] .= DN
+                if J == 0
+                    if computeCL!(aCL, S, PS, nS) && oneCL
+                        return nothing
+                    end
+                    B[ii] .= true
+                    continue
+                end
+                # J > 0
+                for j in 0:J
+                    cbJ = combinations(cbj, j)
+                    for ij in cbJ
+                        Se[ij] .= OE
+                        if computeCL!(aCL, S, PS, nS) && oneCL
+                            return nothing
+                        end
+                        Se[ij] .= EO
+                    end
+                end
+                B[ii] .= true
+                continue
+            end
+
+            # nb > 0
+            for m in nb:-1:0    #bounded
+                cbB = combinations(cbb, m)
+                for iu in cbB   #for UP
+                    B[iu] .= false  #D
+                    Sv[B] .= DN
+                    S[iu] .= UP
+                    if J == 0
+                        if computeCL!(aCL, S, PS, nS) && oneCL
+                            return nothing
+                        end
+                        B[iu] .= true
+                        continue
+                    end
+                    # J > 0
+                    for j in 0:J
+                        cbJ = combinations(cbj, j)
+                        for ij in cbJ
+                            Se[ij] .= OE
+                            if computeCL!(aCL, S, PS, nS) && oneCL
+                                return nothing
+                            end
+                            Se[ij] .= EO
+                        end
+                    end
+                    B[iu] .= true
+                end
+            end
+            B[ii] .= true
+        end
+    end
+    return nothing
+end

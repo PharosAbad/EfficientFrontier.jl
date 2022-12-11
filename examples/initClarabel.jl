@@ -1,0 +1,64 @@
+#When there is an upper bound, we need the `:Clarabel` (an interior point numerical solver) to find a CL
+# In particular, if in addition N is large, e.g., N>30  (the solution space may reach 3^N, and at least 2^N for combinatorial search)
+
+# S&P 500 data, the Covariance matrix is not positive define
+#https://gitlab.math.ethz.ch/maechler/CLA/-/raw/master/data/muS.sp500.rda
+
+
+println("\n pls download https://gitlab.math.ethz.ch/maechler/CLA/-/raw/master/data/muS.sp500.rda to /tmp \n")
+sp5h = load("/tmp/muS.sp500.rda")
+
+E = values(sp5h["muS.sp500"]["mu"])
+V = values(sp5h["muS.sp500"]["covar"])
+V = (V+V')/2
+
+
+println("\n--- connecting Critical Line Segments vs Markowitz's CLA  ---\n")
+
+if length(filter((x) -> x == :Markowitz, names(Main, imported=true))) == 0
+    include("/3T/TeXLive/EfficientFrontier/examples/Markowitz.jl")
+    using .Markowitz
+end
+
+u = 3/32*ones(length(E))
+
+m = markowitz(E, V; upper=u)
+unit_sum(m) # total weight = 100%
+ts = @elapsed f = frontier(m)
+println("Markowitz CLA:  ", ts, "  seconds")     #0.14 seconds
+
+
+
+Pu = Problem(E, V, u)
+
+#DO NOT do this, unless you have a quantum computer
+#ts = @elapsed aCLu = EfficientFrontier.ECL(Pu)
+
+println("\n--- connecting Critical Line Segments: init by `:Clarabel`   ---\n")
+ts = @elapsed aCLu = EfficientFrontier.ECL(Pu, :Clarabel)   #using numerical solver
+
+aEFu = eFrontier(aCLu, Pu)
+println("connecting Critical Line Segments:  ", ts, "  seconds")    #0.20 seconds
+
+
+
+#=
+using LinearAlgebra
+aCL = aCLu
+tolNorm = 2^-26
+
+nL = lastindex(aCL)
+W = trues(nL)
+K = 0
+for k in eachindex(aCL)
+    if norm(aCL[k].beta) < tolNorm
+        W[k] = false
+    end
+    global K = max(K, aCL[k].K)
+end
+
+display( findall(.!W) )
+#CL 1 is singular, the starting point of frontier, CL 9 is also a singular, hence a kink
+
+println("CLA  ", size(f.weights,1), "\ncCLS ", size(aEFu.Z,1), "\nmax K: ", K)
+=#

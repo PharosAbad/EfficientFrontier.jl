@@ -90,7 +90,10 @@ println("equilibrate:  ", ts, "  seconds") #0.001 seconds
 Pb = Problem(convert(Vector{BigFloat},E), V, u, d, G, g, A, b)
 ts = @elapsed aCLb = EfficientFrontier.ECL(Pb)
 aEFb = eFrontier(aCLb, Pb)
-println("BigFloat:  ", ts, "  seconds")   #0.037 seconds, slower than Float64
+println("BigFloat:  ", ts, "  seconds (heavy searching cost when there is an upper bound)")   #6.47 seconds 
+ts = @elapsed aCLc = EfficientFrontier.ECL(Pb, :Clarabel)
+println("BigFloat (init by `:Clarabel`):  ", ts, "  seconds")   #0.037 seconds, slower than Float64
+
 #println("improvements  ", round.([maximum(abs.(aEFb.Z-aEF.Z)), maximum(abs.(aEFt.Z-aEF.Z))], sigdigits=3))
 #println("BigFloat over Float64+equilibrate, improvements: ", round(maximum(abs.(aEFb.Z-aEFt.Z)), sigdigits=3))
 println("BigFloat over Float64+equilibrate: ", round(norm(aEFb.Z-aEFt.Z), sigdigits=3))
@@ -99,7 +102,7 @@ println("BigFloat over Float64: ", round(norm(aEFb.Z-aEF.Z), sigdigits=3))
 #maximum(abs.(f.weights[end-15:end,:]-aEF.Z[end-15:end,:]))
 
 println("
-v0.2.2  `Float64` is enough thus the default
+v0.3  `Float64` is enough thus the default
     `equilibrate` may improve precision if range of non-zeros in abs.(E) or abs.(V) is too large
     `BigFloat` can be tens (30 to 70), even more than 200 times slow.
     If precision is a problem, `Float64+equilibrate` is recommended. It is better (fast and stable) most of the time, but not always. (Due to the truncation of floating number, 
