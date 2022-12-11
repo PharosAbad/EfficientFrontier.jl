@@ -483,6 +483,9 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
                 break
             end
         else
+            if t.L0 <= 0
+                break
+            end
             q = t.I0
             for k in eachindex(q)
                 c = q[k]
