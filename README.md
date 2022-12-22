@@ -49,7 +49,7 @@ __EfficientFrontier.jl__ can be added by
 
 - `import Pkg; Pkg.add("EfficientFrontier")`
 - `pkg> add EfficientFrontier`
-- `pkg> add https://github.com/PharosAbad/EfficientFrontier.jl.git` for test
+- `pkg> dev EfficientFrontier` for test. To use the registered version again `pkg> free EfficientFrontier`
 
 ## License 🔍
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
