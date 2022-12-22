@@ -91,8 +91,8 @@ Pb = Problem(convert(Vector{BigFloat},E), V, u, d, G, g, A, b)
 ts = @elapsed aCLb = EfficientFrontier.ECL(Pb)
 aEFb = eFrontier(aCLb, Pb)
 println("BigFloat:  ", ts, "  seconds (heavy searching cost when there is an upper bound)")   #6.47 seconds 
-ts = @elapsed aCLc = EfficientFrontier.ECL(Pb, :Clarabel)
-println("BigFloat (init by `:Clarabel`):  ", ts, "  seconds")   #0.037 seconds, slower than Float64
+ts = @elapsed aCLc = EfficientFrontier.ECL(Pb; init=EfficientFrontier.ClarabelCL!)
+println("BigFloat (init by `Clarabel.jl`):  ", ts, "  seconds")   #0.037 seconds, slower than Float64
 
 #println("improvements  ", round.([maximum(abs.(aEFb.Z-aEF.Z)), maximum(abs.(aEFt.Z-aEF.Z))], sigdigits=3))
 #println("BigFloat over Float64+equilibrate, improvements: ", round(maximum(abs.(aEFb.Z-aEFt.Z)), sigdigits=3))

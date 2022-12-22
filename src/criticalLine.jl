@@ -7,37 +7,6 @@ function Int(v::Vector{Status})
     return x
 end
 
-#=
-function ClarabelQP(E::Vector{T}, V::Matrix{T}, mu::T, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, Ae::Matrix{T}, be::Vector{T}) where {T}
-    N = length(E)
-    iu = u .!= Inf
-    P = sparse(V)
-    q = zeros(T, N) #Clarabel need P, q, A, b to be in type T
-    A = sparse([E'; Ae; G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]])
-    b = [mu; be; g; -d; u[iu]]
-    cones = [Clarabel.ZeroConeT(1 + length(be)), Clarabel.NonnegativeConeT(length(g) + N + sum(iu))]
-    settings = Clarabel.Settings{T}()
-    settings.verbose = false
-    solver = Clarabel.Solver{T}()
-    Clarabel.setup!(solver, P, q, A, b, cones, settings)
-    Clarabel.solve!(solver)
-end
-
-function ClarabelLP(E::Vector{T}, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, Ae::Matrix{T}, be::Vector{T}) where {T}
-    N = length(E)
-    iu = u .!= Inf  #Float64(Inf) == BigFloat(Inf)
-    P = sparse(zeros(T, N, N))
-    q = -E
-    A = sparse([Ae; G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]])
-    b = [be; g; -d; u[iu]]
-    cones = [Clarabel.ZeroConeT(length(be)), Clarabel.NonnegativeConeT(length(g) + N + sum(iu))]
-    settings = Clarabel.Settings{T}()
-    settings.verbose = false
-    solver = Clarabel.Solver{T}()
-    Clarabel.setup!(solver, P, q, A, b, cones, settings)
-    Clarabel.solve!(solver)
-end
-=#
 
 function getRows(A, nS)
     #indicate the non-redundant rows, the 1st row should be non-zeros (vector one here)
@@ -53,6 +22,7 @@ function getRows(A, nS)
     end
     return findall(R)
 end
+
 
 """
         computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::Settings{T}) where T
@@ -341,6 +311,7 @@ function BoundaryCP!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS:
 end
 =#
 
+#=
 """
 
         aCL = ECL(PS::Problem, init=:Combinatorics; numSettings = Settings(PS))
@@ -360,16 +331,20 @@ the return aCL has the follwing structure
             beta::Vector{T}         # K x 1
         end
 
+See https://github.com/PharosAbad/EfficientFrontier.jl/wiki
+
+See also [`Problem`](@ref), [`Settings`](@ref)
+
 """
 function ECL(PS::Problem, init=:Combinatorics; numSettings=Settings(PS))
     aCL = Vector{sCL{typeof(PS).parameters[1]}}(undef, 0)
     if init == :Clarabel
         #return cECL(PS; numSettings=numSettings)
 
-        #=if !initCL!(aCL, PS, numSettings)
+        #=if !initCL!(aCL, PS; nS=numSettings)
             error("Not able to find the first Critical Line")
         end =#
-        initCL!(aCL, PS, numSettings)
+        initCL!(aCL, PS; nS=numSettings)
     else
         cbCL!(aCL, PS; nS=numSettings)
     end
@@ -381,9 +356,47 @@ function ECL(PS::Problem, init=:Combinatorics; numSettings=Settings(PS))
     ECL!(aCL, PS; numSettings=numSettings)
     return aCL
 end
+=#
 
 
-function initCL!(aCL, PS, nS)
+"""
+
+        aCL = ECL(PS::Problem; numSettings = Settings(PS), init::Function=cbCL!)
+
+compute all the Critical Line Segments. Init the CL by combinatorial search
+
+the return aCL has the follwing structure
+
+        struct sCL{T<:AbstractFloat}    #critical line segment
+            S::Vector{Status}       # (N+J)x1
+            K::Integer              #number of IN assets
+            L1::T                   #higher lambda
+            I1::Vector{Event{T}}    #go in/out events at L1
+            L0::T                   #lower lambda
+            I0::Vector{Event{T}}    #go in/out events at L0
+            alpha::Vector{T}        # K x 1
+            beta::Vector{T}         # K x 1
+        end
+
+See https://github.com/PharosAbad/EfficientFrontier.jl/wiki
+
+See also [`Problem`](@ref), [`Settings`](@ref)
+
+"""
+function ECL(PS::Problem; numSettings=Settings(PS), init::Function=cbCL!)
+    aCL = Vector{sCL{typeof(PS).parameters[1]}}(undef, 0)    
+    init(aCL, PS; nS=numSettings)
+    if lastindex(aCL) == 0
+        error("Not able to find the first Critical Line")
+    end
+
+    ECL!(aCL, PS; numSettings=numSettings, incL=true)
+    ECL!(aCL, PS; numSettings=numSettings)
+    return aCL
+end
+
+
+function initCL!(aCL, PS; nS=Settings(PS))
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
     (; tolS, muShft) = nS
 
@@ -414,11 +427,12 @@ function initCL!(aCL, PS, nS)
     computeCL!(aCL, S, PS, nS)
 end
 
+
 #=
 function cECL(PS::Problem; numSettings=Settings(PS))
 #using ClarabelLP thr initCL!
     aCL = Vector{sCL{typeof(PS).parameters[1]}}(undef, 0)
-    if !initCL!(aCL, PS, numSettings)
+    if !initCL!(aCL, PS; nS=numSettings)
         error("Not able to find the first Critical Line")
     end
     t = aCL[end]
@@ -479,9 +493,6 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
                 end
                 S[id] = From
             end
-            if sum(S .== IN) < M + sum(S .== EO)
-                break
-            end
         else
             if t.L0 <= 0
                 break
@@ -496,6 +507,10 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
                 end
                 S[id] = To
             end
+        end
+        if sum(S .== IN) < M + sum(S .== EO)
+            break
+            #need to test if a chance to increase/decrease mu. For example, K=0 and not the top or bottom of frontier
         end
 
         if computeCL!(aCL, S, PS, numSettings)

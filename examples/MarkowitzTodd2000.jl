@@ -63,10 +63,11 @@ display(aEF.Z)
 # Because the first Corner Portfolio is on the boundary, there is no IN assets
 #aCL[1].I1[1].L - aCL[1].I1[2].L    #-1.1102230246251565e-14
 
+#=
 #BigFloat
 Pb = Problem(convert(Vector{BigFloat}, E0), V0, u, d, G, g)
 ts = @elapsed aCLb = EfficientFrontier.ECL(Pb; numSettings = Settings{BigFloat}(tolL = BigFloat(2)^-51))
-#aCLc = EfficientFrontier.ECL(Pb, :Clarabel; numSettings = Settings{BigFloat}(tolL = BigFloat(2)^-51))
+#aCLc = EfficientFrontier.ECL(Pb; init=EfficientFrontier.ClarabelCL!, numSettings = Settings{BigFloat}(tolL = BigFloat(2)^-51))
 aEFb = eFrontier(aCLb, Pb)
 println("BigFloat:  ", ts, "  seconds")   #0.020 seconds
 #display(aEFb.Z)
@@ -80,9 +81,40 @@ aCLb[1].I1
 =#
 #aCLb[1].I1[1].L - aCLb[1].I1[2].L  #-2.498910800508016802607538025910020038691088049840311341808673741032753977364765e-16
 #for BigFloat, default tolL = BigFloat(2)^-76 = 1.32348898008484427979425390731194056570529937744140625e-23
+=#
+
+#BigFloat from the source data: convert to Int (rationals) then to BigFloat to improve precision
+V0 = convert(Matrix{Int64},round.(V*10^8))
+E0 = convert(Vector{Int64},round.(E*10^3))
+d0 = convert(Vector{Int64},round.(d*10))
+u0 = convert(Vector{Int64},round.(u*10))
+g0 = convert(Vector{Int64},round.(g*10))
+G0 = convert(Matrix{Int64},round.(G*10))
+Vb = V0 /BigFloat(10^8)
+Eb = E0 /BigFloat(10^3)
+db = d0 /BigFloat(10)
+ub = u0 /BigFloat(10)
+gb = g0 /BigFloat(10)
+Gb = G0 /BigFloat(10)
+#println("\n xxx  ", maximum(abs.(Eb-E)))
+println("\n E[4]=1.12,  but BigFloat(\"1.12\")-E[4] is: ", BigFloat("1.12")-E[4])
+println("now convert the raw data to BigFloat to improve precision (raw data to BigFloat, not raw data to Float64 then to BigFloat)")
+
+
+#S = Status[UP, IN, DN, UP, DN, DN, DN, DN, DN, IN, OE, OE]
+S = aCL[1].S
+Pb = Problem(Eb, Vb, ub, db, Gb, gb)
+aCLb = Vector{sCL{typeof(Pb).parameters[1]}}(undef, 0)
+computeCL!(aCLb, S, Pb, Settings(Pb))
+#computeCL!(aCLb, S, Pb, Settings{BigFloat}(tolL = BigFloat(2)^-51)) #if the data is first truncated by Float64, adjust the TolL
+
 
 println("\n Assets 2 and 10 go IN at the same time, NOT the case that ONE at each time")
 display(aCLb[1].I1)
+println("using BigFloat, the difference on L: ", aCLb[1].I1[1].L -aCLb[1].I1[2].L)
+#aCLb[1].I1[1].L -aCLb[1].I1[2].L        #-1.450876317255866697064907112950467127947488061225295272683982182988323422931288e-75
+
+
 
 println("
 Because the first Corner Portfolio is on the boundary, there is no IN assets (K=0).  there must be K>=M for each CL.

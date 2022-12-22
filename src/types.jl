@@ -96,7 +96,24 @@ Setup a Portfolio Selection model: for mean vector E and variance matrix V
 ```
 Default values: u = +∞, d = 0, G = [], g = [], A = ones(1,N), b = [1], and equilibrate = false
 
-See https://github.com/PharosAbad/EfficientFrontier.jl/wiki
+# Example
+```
+    using EfficientFrontier
+    V = [1/100 1/80 1/100
+        1/80 1/16 1/40
+        1/100 1/40 1/25]    #variance matrix
+    E = [109 / 100; 23 / 20; 119 / 100] #mean vector
+    P = Problem(E, V)   #Default models, non-shortsale
+    aCL = EfficientFrontier.ECL(P)  #compute all Critical Lines
+    aEF = eFrontier(aCL, P)     #compute the Efficient Frontier
+    mu = (aEF.mu[1]+aEF.mu[end])/2  #mu at the middle of Efficient Frontier
+    z = ePortfolio(mu, aEF)     #weight of the efficient portfolio given mu
+
+```
+
+See [`Documentation for EfficientFrontier.jl`](https://github.com/PharosAbad/EfficientFrontier.jl/wiki)
+
+See also [`EfficientFrontier.ECL`](@ref)
 
 """
 struct Problem{T<:AbstractFloat}
@@ -156,6 +173,9 @@ function Problem(E, V;
     d[isinf.(d)] .= -1.0    #replace -Inf in lower bound by -1.0
     iu = u .< d
     u[iu] .= d[iu]   #make sure u >= d
+    iu = u .< 0
+    u[iu] .= 0  #make sure u >= 0
+
 
     
     @assert sum(d) < 1 "the sum of downside/lower bound is greater than 1"

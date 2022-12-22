@@ -1,8 +1,14 @@
-#When there is an upper bound, we need the `:Clarabel` (an interior point numerical solver) to find a CL
+#When there is an upper bound, we may use the `Clarabel.jl` (an interior point numerical solver) to find a CL
 # In particular, if in addition N is large, e.g., N>30  (the solution space may reach 3^N, and at least 2^N for combinatorial search)
 
 # S&P 500 data, the Covariance matrix is not positive define
 #https://gitlab.math.ethz.ch/maechler/CLA/-/raw/master/data/muS.sp500.rda
+
+using CodecXz
+using RData
+using EfficientFrontier
+using LinearAlgebra
+using Serialization
 
 
 println("\n pls download https://gitlab.math.ethz.ch/maechler/CLA/-/raw/master/data/muS.sp500.rda to /tmp \n")
@@ -34,8 +40,8 @@ Pu = Problem(E, V, u)
 #DO NOT do this, unless you have a quantum computer
 #ts = @elapsed aCLu = EfficientFrontier.ECL(Pu)
 
-println("\n--- connecting Critical Line Segments: init by `:Clarabel`   ---\n")
-ts = @elapsed aCLu = EfficientFrontier.ECL(Pu, :Clarabel)   #using numerical solver
+println("\n--- connecting Critical Line Segments: init by `Clarabel.jl`   ---\n")
+ts = @elapsed aCLu = EfficientFrontier.ECL(Pu; init=EfficientFrontier.ClarabelCL!)   #using numerical solver
 
 aEFu = eFrontier(aCLu, Pu)
 println("connecting Critical Line Segments:  ", ts, "  seconds")    #0.20 seconds
