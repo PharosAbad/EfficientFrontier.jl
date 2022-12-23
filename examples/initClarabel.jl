@@ -22,7 +22,7 @@ V = (V+V')/2
 println("\n--- connecting Critical Line Segments vs Markowitz's CLA  ---\n")
 
 if length(filter((x) -> x == :Markowitz, names(Main, imported=true))) == 0
-    include("/3T/TeXLive/EfficientFrontier/examples/Markowitz.jl")
+    include("./Markowitz.jl")
     using .Markowitz
 end
 
@@ -38,14 +38,23 @@ println("Markowitz CLA:  ", ts, "  seconds")     #0.14 seconds
 Pu = Problem(E, V, u)
 
 #DO NOT do this, unless you have a quantum computer
-#ts = @elapsed aCLu = EfficientFrontier.ECL(Pu)
+#ts = @elapsed aCLu = EfficientFrontier.ECL(Pu; init=cbCL!)
 
+if length(filter((x) -> x == :uClarabel, names(Main, imported=true))) == 0
+    include("./uClarabel.jl")
+    using .uClarabel
+end
 println("\n--- connecting Critical Line Segments: init by `Clarabel.jl`   ---\n")
-ts = @elapsed aCLu = EfficientFrontier.ECL(Pu; init=EfficientFrontier.ClarabelCL!)   #using numerical solver
 
+ts = @elapsed aCLu = EfficientFrontier.ECL(Pu; init=ClarabelCL!)   #using numerical solver
 aEFu = eFrontier(aCLu, Pu)
-println("connecting Critical Line Segments:  ", ts, "  seconds")    #0.20 seconds
+println("connecting Critical Line Segments:  ", ts, "  seconds")    #0.303391205  seconds
 
+
+println("\n--- connecting Critical Line Segments: init by default `SimplexCL!`  ---\n")
+ts = @elapsed aCL = EfficientFrontier.ECL(Pu)   #using numerical solver
+aEF = eFrontier(aCL, Pu)
+println("connecting Critical Line Segments:  ", ts, "  seconds")    #0.061639485  seconds
 
 
 #=

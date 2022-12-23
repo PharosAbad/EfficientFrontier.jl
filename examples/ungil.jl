@@ -55,7 +55,7 @@ add_constraint(m, 1 * (class .== :EQ), '<', 0.6)
 add_constraint(m, [1 1 0 0 0 0 0 0 0 0 0 0 0 0], '=', 0.25) # US govt + Investment Grade = 25%
 
 ts = @elapsed f = frontier(m)
-println("Markowitz CLA:  ", ts, "  seconds") #0.001 seconds
+println("Markowitz CLA:  ", ts, "  seconds") #0.001356236  seconds
 display(f.weights)
 
 
@@ -77,21 +77,26 @@ P = Problem(E, V, u, d, G, g, A, b)
 ts = @elapsed aCL = EfficientFrontier.ECL(P)
 aEF = eFrontier(aCL, P)
 #display(aCL)    #there are 2  singular CL (beta is a zero vector, a line in R^(N+J+M+1) space, but a single point in mean-variance space )
-println("connecting Critical Line Segments:  ", ts, "  seconds") #0.001 seconds
+println("connecting Critical Line Segments:  ", ts, "  seconds") #0.000833465  seconds
 display(aEF.Z)  # Kinks on the frontier due to singular CL
 
 Pt = Problem(E, V, u, d, G, g, A, b; equilibrate=true)
 ts = @elapsed aCLt = EfficientFrontier.ECL(Pt)
 aEFt = eFrontier(aCLt, Pt)
-println("equilibrate:  ", ts, "  seconds") #0.001 seconds
+println("equilibrate:  ", ts, "  seconds") #0.000916927  seconds
 
 
 #BigFloat
 Pb = Problem(convert(Vector{BigFloat},E), V, u, d, G, g, A, b)
 ts = @elapsed aCLb = EfficientFrontier.ECL(Pb)
 aEFb = eFrontier(aCLb, Pb)
-println("BigFloat:  ", ts, "  seconds (heavy searching cost when there is an upper bound)")   #6.47 seconds 
-ts = @elapsed aCLc = EfficientFrontier.ECL(Pb; init=EfficientFrontier.ClarabelCL!)
+println("BigFloat:  ", ts, "  seconds")   #0.006389718  seconds
+
+if length(filter((x) -> x == :uClarabel, names(Main, imported=true))) == 0
+    include("./uClarabel.jl")
+    using .uClarabel
+end
+ts = @elapsed aCLc = EfficientFrontier.ECL(Pb; init=ClarabelCL!)
 println("BigFloat (init by `Clarabel.jl`):  ", ts, "  seconds")   #0.037 seconds, slower than Float64
 
 #println("improvements  ", round.([maximum(abs.(aEFb.Z-aEF.Z)), maximum(abs.(aEFt.Z-aEF.Z))], sigdigits=3))

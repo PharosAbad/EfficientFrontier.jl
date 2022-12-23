@@ -59,7 +59,7 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
         AB = AB[rb, :]
     end
     K = sum(F)
-    if K < size(AE, 1)    #infeasible
+    if K < size(AE, 1)    # <:  infeasible,  or =: no freedom
         return false
     end
 
@@ -95,6 +95,14 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
     alpha = TC * bE - VQ * c    #α=TCb_{E}-V_{I}⁻¹Qc
     beta = VQ * EF    #β=V_{I}⁻¹Qμ_{I}
 
+    ik = findall(F)
+    if K == 1
+        k = ik[1]
+        if abs(alpha[1]-d[k]) < tolG || abs(alpha[1]-u[k]) < tolG   #a boundary point
+            return false
+        end
+    end
+
     #α_{λ}=-C(T′c+b_{E})
     alphaL = -(TC' * c + C * bE)
     #β_{λ}=CT′μ_{I}
@@ -106,7 +114,7 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
 
     LE0 = Vector{Event{T}}(undef, 0)
     LE1 = Vector{Event{T}}(undef, 0)
-    ik = findall(F)
+    #ik = findall(F)
     for k in eachindex(alpha)
         j = ik[k]
         t = beta[k]
@@ -124,7 +132,7 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
                 push!(LE0, Event{T}(IN, UP, j, uL))
             end
         else
-            if !(d[j] < h < u[j])
+            if !(d[j]-tolG < h < u[j]+tolG)
                 return false
             end
 
@@ -150,7 +158,7 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
                 push!(LE0, Event{T}(UP, IN, j, dL))
             end
         else
-            if (D[j] && h <= 0) || (U[j] && h >= 0)
+            if (D[j] && h <= -tolG) || (U[j] && h >= tolG)
                 return false
             end
         end
@@ -172,7 +180,7 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
         elseif t < -tolG
             push!(LE1, Event{T}(EO, OE, j, dL))
         else
-            if h <= 0
+            if h <= -tolG
                 return false
             end
         end
@@ -210,7 +218,7 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
             elseif t < -tolG
                 push!(LE1, Event{T}(OE, EO, j, dL))
             else
-                if h <= 0
+                if h <= -tolG
                     return false
                 end
             end
@@ -361,9 +369,9 @@ end
 
 """
 
-        aCL = ECL(PS::Problem; numSettings = Settings(PS), init::Function=cbCL!)
+        aCL = ECL(PS::Problem; numSettings = Settings(PS), init::Function=SimplexCL!)
 
-compute all the Critical Line Segments. Init the CL by combinatorial search
+compute all the Critical Line Segments. Init the CL by Simplex Method (combinatorial search `init=cbCL!`)
 
 the return aCL has the follwing structure
 
@@ -383,7 +391,8 @@ See https://github.com/PharosAbad/EfficientFrontier.jl/wiki
 See also [`Problem`](@ref), [`Settings`](@ref)
 
 """
-function ECL(PS::Problem; numSettings=Settings(PS), init::Function=cbCL!)
+function ECL(PS::Problem; numSettings=Settings(PS), init::Function=SimplexCL!)
+#function ECL(PS::Problem; numSettings=Settings(PS), init::Function=cbCL!)
     aCL = Vector{sCL{typeof(PS).parameters[1]}}(undef, 0)    
     init(aCL, PS; nS=numSettings)
     if lastindex(aCL) == 0
@@ -395,7 +404,7 @@ function ECL(PS::Problem; numSettings=Settings(PS), init::Function=cbCL!)
     return aCL
 end
 
-
+#=
 function initCL!(aCL, PS; nS=Settings(PS))
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
     (; tolS, muShft) = nS
@@ -426,7 +435,7 @@ function initCL!(aCL, PS; nS=Settings(PS))
     end
     computeCL!(aCL, S, PS, nS)
 end
-
+=#
 
 #=
 function cECL(PS::Problem; numSettings=Settings(PS))
@@ -464,6 +473,35 @@ function cECL(PS::Problem; numSettings=Settings(PS))
     return aCL
 end
 =#
+
+function badK(S, PS, nS)
+    (; u, d, G, g, A, b, N, J) = PS
+
+    Sv = @view S[1:N]
+    F = (Sv .== IN)
+    B = .!F
+    U = (Sv .== UP)
+    Se = @view S[(N.+(1:J))]
+    Eg = (Se .== EO)
+    GE = @view G[Eg, :]
+    AE = vcat(A[:, F], GE[:, F])
+
+    zB = d[B]
+    zB[U[B]] = u[U]
+    AB = vcat(A[:, B], GE[:, B])
+    bE = vcat(b, g[Eg]) - AB * zB
+    rb = getRows([AE bE], nS)
+    if length(getRows(AE, nS)) != length(rb)
+        return true    #infeasible
+    else
+        AE = AE[rb, :]
+    end
+    K = sum(F)
+    if K < size(AE, 1)    # <:  infeasible,  or =: no freedom
+        return true 
+    end
+    return false
+end
 
 """
 
@@ -508,28 +546,13 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
                 S[id] = To
             end
         end
-        if sum(S .== IN) < M + sum(S .== EO)
+        if badK(S, PS, numSettings)
+        #if sum(S .== IN) <= M + sum(S .== EO)
             break
-            #need to test if a chance to increase/decrease mu. For example, K=0 and not the top or bottom of frontier
         end
 
         if computeCL!(aCL, S, PS, numSettings)
             t = aCL[end]
-            #= if incL
-                if isinf(t.L1)
-                    break
-                end
-                if aCL[end-1].S == t.S
-                    display(Int(aCL[end-1].S)')
-                    display(Int(t.S)')
-                    pop!(aCL)
-                    break
-                end
-            else
-                if t.L0 <= 0
-                    break
-                end
-            end =#
             if isinf(t.L1) || t.L0 <= 0
                 break
             end

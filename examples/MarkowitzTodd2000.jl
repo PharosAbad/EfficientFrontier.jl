@@ -18,10 +18,7 @@ V = [0.40755159 0.03175842 0.05183923 0.05663904 0.0330226 0.00827775 0.02165938
 E = [1.175, 1.19, 0.396, 1.12, 0.346, 0.679, 0.089, 0.73, 0.481, 1.08]
 
 #EfficientFrontier
-E0 = vec(E)
-V0 = copy(V)
 N = length(E)
-
 A = ones(1, N)
 b = ones(1)
 d = zeros(N)
@@ -51,7 +48,7 @@ display(f.weights)
 =#
 
 
-P = Problem(E0, V0, u, d, G, g)
+P = Problem(E, V, u, d, G, g)
 ts = @elapsed aCL = EfficientFrontier.ECL(P)
 aEF = eFrontier(aCL, P)
 println("connecting Critical Line Segments:  ", ts, "  seconds")   #0.0006 seconds
@@ -65,7 +62,7 @@ display(aEF.Z)
 
 #=
 #BigFloat
-Pb = Problem(convert(Vector{BigFloat}, E0), V0, u, d, G, g)
+Pb = Problem(convert(Vector{BigFloat}, E), V, u, d, G, g)
 ts = @elapsed aCLb = EfficientFrontier.ECL(Pb; numSettings = Settings{BigFloat}(tolL = BigFloat(2)^-51))
 #aCLc = EfficientFrontier.ECL(Pb; init=EfficientFrontier.ClarabelCL!, numSettings = Settings{BigFloat}(tolL = BigFloat(2)^-51))
 aEFb = eFrontier(aCLb, Pb)

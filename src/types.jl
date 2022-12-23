@@ -216,10 +216,11 @@ kwargs are from the fields of Settings{T<:AbstractFloat} for Float64 and BigFloa
 struct Settings{T<:AbstractFloat}
     tol::T         #general scalar
     tolNorm::T     #for norms
-    tolS::T       #for s from Clarabel
+    tolS::T       #for s from Clarabel, or tol for Simplex
     tolL::T        #for L
     tolG::T        #for Greeks (beta and gamma)
-    muShft::T      #shift the max mu to (1-muShft)*mu    
+    muShft::T      #shift the max mu to (1-muShft)*mu
+    rule::Symbol    #rule for Simplex
 end
 
 Settings(; kwargs...) = Settings{Float64}(; kwargs...)
@@ -228,8 +229,9 @@ function Settings{Float64}(; tol = 2^-26,
     tolS = 2^-26, 
     tolL = 2^-26, 
     tolG = 2^-26, 
-    muShft = 2^-18)
-    Settings{Float64}(tol, tolNorm, tolS, tolL, tolG, muShft)
+    muShft = 2^-18,
+    rule = :Dantzig)
+    Settings{Float64}(tol, tolNorm, tolS, tolL, tolG, muShft, rule)
 end
 
 function Settings{BigFloat}(; tol = BigFloat(2)^-76 , 
@@ -239,8 +241,9 @@ function Settings{BigFloat}(; tol = BigFloat(2)^-76 ,
     tolL = BigFloat(2)^-76, 
     tolG = BigFloat(2)^-76, 
     #muShft = BigFloat(2)^-27)
-    muShft = BigFloat(2)^-18)
-    Settings{BigFloat}(tol, tolNorm, tolS, tolL, tolG, muShft)
+    muShft = BigFloat(2)^-18,
+    rule = :Dantzig)
+    Settings{BigFloat}(tol, tolNorm, tolS, tolL, tolG, muShft, rule)
 end
 
 function Settings(P::Problem)
