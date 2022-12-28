@@ -34,8 +34,8 @@ Events that assets go IN/OUT(DN or UP), or inequalities go binded (EO, as equali
 
             From::Status
             To::Status
-            id::Int
-            L::T
+            id::Int     #asset ID
+            L::T        #L
 
 """
 struct Event{T<:AbstractFloat}
@@ -48,6 +48,8 @@ end
 
 
 """
+
+        sCL(P::Problem)         define an empty Vector of struct sCL for Problem P
 
         struct sCL{T<:AbstractFloat}
 
@@ -75,6 +77,7 @@ struct sCL{T<:AbstractFloat}    #critical line segment
 end
 
 sCL(args...) = sCL{Float64}(args...)
+
 
 
 """
@@ -196,6 +199,9 @@ Problem(E, V, u, d, G, g; equilibrate=false) = Problem(E, V; u = u, d = d, G = G
 Problem(E, V, u, d, G, g, A, b; equilibrate=false) = Problem(E, V; u = u, d = d, G = G, g = g, A = A, b = b, equilibrate=equilibrate)
 
 
+function sCL(P::Problem)
+    Vector{sCL{typeof(P).parameters[1]}}(undef, 0)
+end
 
 """
 
@@ -207,10 +213,11 @@ kwargs are from the fields of Settings{T<:AbstractFloat} for Float64 and BigFloa
 
             tol::T         #general scalar
             tolNorm::T     #for norms
-            tolS::T        #for s from Clarabel
+            tolS::T        #for s from Clarabel, or tol for Simplex
             tolL::T        #for L
             tolG::T        #for Greeks (beta and gamma)
-            muShft::T      #shift the max mu to (1-muShft)*mu    
+            muShft::T      #shift the max mu to (1-muShft)*mu
+            rule::Symbol    #rule for Simplex {:Dantzig, :maxImprovement}
 
 """
 struct Settings{T<:AbstractFloat}
@@ -246,8 +253,9 @@ function Settings{BigFloat}(; tol = BigFloat(2)^-76 ,
     Settings{BigFloat}(tol, tolNorm, tolS, tolL, tolG, muShft, rule)
 end
 
-function Settings(P::Problem)
-    Settings{typeof(P).parameters[1]}()
+function Settings(P::Problem; kwargs...)
+#function Settings(P::Problem)
+    Settings{typeof(P).parameters[1]}(; kwargs...)
 end
 
 

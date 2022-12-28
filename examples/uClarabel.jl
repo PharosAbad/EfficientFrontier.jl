@@ -35,6 +35,14 @@ function ClarabelLP(E::Vector{T}, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::V
     Clarabel.solve!(solver)
 end
 
+"""
+
+        ClarabelCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where T
+
+compute the Critical Line Segments by Clarabel.jl (Interior Point QP), for the highest expected return. Save the CL to aCL if done
+
+
+"""
 function ClarabelCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {T}
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
     (; tolS, muShft) = nS

@@ -22,10 +22,10 @@ V = (V+V')/2    #make sure symetry
 #display(norm(V - V'))
 println("rank(V):  ", rank(V))  #263
 
-#sort the data improve the speed in this example
+#= #sort the data improve the speed in this example
 ip = sortperm(vec(E), rev=true)
 E = vec(E[ip])
-V = V[ip, ip]
+V = V[ip, ip]   =#
 
 
 if length(filter((x) -> x == :Markowitz, names(Main, imported=true))) == 0
@@ -44,6 +44,6 @@ P = Problem(E, V; equilibrate=false)
 ts = @elapsed aCL = EfficientFrontier.ECL(P)
 aEF = eFrontier(aCL, P)
 t1 = time()
-println("connecting Critical Line Segments:  ", ts, "  seconds")    #0.057  seconds if sortperm
-#display(t1 - t0)    #0.10 seconds  if sortperm
+println("connecting Critical Line Segments:  ", ts, "  seconds")    #0.039446974  seconds
+#display(t1 - t0)    #0.083 seconds
 display(aEF.Z)

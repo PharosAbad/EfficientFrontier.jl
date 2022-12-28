@@ -51,7 +51,7 @@ display(f.weights)
 P = Problem(E, V, u, d, G, g)
 ts = @elapsed aCL = EfficientFrontier.ECL(P)
 aEF = eFrontier(aCL, P)
-println("connecting Critical Line Segments:  ", ts, "  seconds")   #0.0006 seconds
+println("connecting Critical Line Segments:  ", ts, "  seconds")   #0.0004 seconds
 display(aEF.Z)
 
 # the CLA in Markowitz and Todd (2000) assumes either one IN or one OUT.
@@ -63,8 +63,10 @@ display(aEF.Z)
 #=
 #BigFloat
 Pb = Problem(convert(Vector{BigFloat}, E), V, u, d, G, g)
-ts = @elapsed aCLb = EfficientFrontier.ECL(Pb; numSettings = Settings{BigFloat}(tolL = BigFloat(2)^-51))
-#aCLc = EfficientFrontier.ECL(Pb; init=EfficientFrontier.ClarabelCL!, numSettings = Settings{BigFloat}(tolL = BigFloat(2)^-51))
+#ts = @elapsed aCLb = EfficientFrontier.ECL(Pb; numSettings = Settings{BigFloat}(tolL = BigFloat(2)^-51))
+ts = @elapsed aCLb = EfficientFrontier.ECL(Pb; numSettings = Settings(Pb; tolL = BigFloat(2)^-51))
+#aCLc = EfficientFrontier.ECL(Pb; init=ClarabelCL!, numSettings = Settings{BigFloat}(tolL = BigFloat(2)^-51))
+#aCLc = EfficientFrontier.ECL(Pb; init=ClarabelCL!, numSettings = Settings(Pb; tolL = BigFloat(2)^-51))
 aEFb = eFrontier(aCLb, Pb)
 println("BigFloat:  ", ts, "  seconds")   #0.020 seconds
 #display(aEFb.Z)
@@ -114,8 +116,8 @@ println("using BigFloat, the difference on L: ", aCLb[1].I1[1].L -aCLb[1].I1[2].
 
 
 println("
-Because the first Corner Portfolio is on the boundary, there is no IN assets (K=0).  there must be K>=M for each CL.
-   Hence,  K>=2 assets go IN if M>=2 (M=1 in this example)
+Because the first Corner Portfolio is on the boundary, there is no IN assets (K=0).
+   Hence,  K>=2 assets go IN (since z'1=1, no way to change a single one while others fixed on boundary, thus, K=1 is ruled out)
 
 the CLA in Markowitz and Todd (2000) assumes either one IN or one OUT (if and only if one asset changes state).
 Our code handles two or more IN and/or OUT (allow any number of changes concurrently).

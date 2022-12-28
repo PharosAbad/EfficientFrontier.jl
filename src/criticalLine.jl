@@ -280,91 +280,8 @@ end
 
 
 
-#=
-function BoundaryCP!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::Settings{T}) where {T}
-    #S is modified too
-    (; E, V, u, d, G, g, A, b, N, M, J) = PS
-    (; tolS, muShft) = nS
 
-    Sv = @view S[1:N]
-    D = (Sv .== DN)
-    U = (Sv .== UP)
-    z = zeros(T, N)
-    z[D] = d[D]
-    z[U] = u[U]
-    mu = z' * E * (1 - muShft)
 
-    y = ClarabelQP(E, V, mu, u, d, G, g, A, b)
-    if Int(y.status) != 1   #SOLVED
-        error("Not able to find the efficient portfolio at mean: " * sprint(show, mu))
-    end
-
-    Y = y.s
-    iu = u .!= Inf
-    D .= Y[(1:N).+(M+J+1)] .< tolS
-    U .= false
-    U[iu] = Y[(1:sum(iu)).+(M+J+N+1)] .< tolS
-    #S = fill(IN, N + J)
-    S .= IN
-    Sv = @view S[1:N]
-    Sv[D] .= DN
-    Sv[U] .= UP
-    if J > 0
-        Se = @view S[(1:J).+N]
-        Se .= EO
-        Og = Y[(1:J).+(M+1)] .> tolS
-        Se[Og] .= OE
-    end
-    computeCL!(aCL, S, PS, nS)
-end
-=#
-
-#=
-"""
-
-        aCL = ECL(PS::Problem, init=:Combinatorics; numSettings = Settings(PS))
-
-compute all the Critical Line Segments. Init the CL by combinatorial search (`init=:Clarabel` by Clarabel.jl, an interior point numerical solver)
-
-the return aCL has the follwing structure
-
-        struct sCL{T<:AbstractFloat}    #critical line segment
-            S::Vector{Status}       # (N+J)x1
-            K::Integer              #number of IN assets
-            L1::T                   #higher lambda
-            I1::Vector{Event{T}}    #go in/out events at L1
-            L0::T                   #lower lambda
-            I0::Vector{Event{T}}    #go in/out events at L0
-            alpha::Vector{T}        # K x 1
-            beta::Vector{T}         # K x 1
-        end
-
-See https://github.com/PharosAbad/EfficientFrontier.jl/wiki
-
-See also [`Problem`](@ref), [`Settings`](@ref)
-
-"""
-function ECL(PS::Problem, init=:Combinatorics; numSettings=Settings(PS))
-    aCL = Vector{sCL{typeof(PS).parameters[1]}}(undef, 0)
-    if init == :Clarabel
-        #return cECL(PS; numSettings=numSettings)
-
-        #=if !initCL!(aCL, PS; nS=numSettings)
-            error("Not able to find the first Critical Line")
-        end =#
-        initCL!(aCL, PS; nS=numSettings)
-    else
-        cbCL!(aCL, PS; nS=numSettings)
-    end
-    if lastindex(aCL) == 0
-        error("Not able to find the first Critical Line")
-    end
-
-    ECL!(aCL, PS; numSettings=numSettings, incL=true)
-    ECL!(aCL, PS; numSettings=numSettings)
-    return aCL
-end
-=#
 
 
 """
@@ -404,77 +321,9 @@ function ECL(PS::Problem; numSettings=Settings(PS), init::Function=SimplexCL!)
     return aCL
 end
 
-#=
-function initCL!(aCL, PS; nS=Settings(PS))
-    (; E, V, u, d, G, g, A, b, N, M, J) = PS
-    (; tolS, muShft) = nS
 
-    x = ClarabelLP(E, u, d, G, g, A, b)
-    if Int(x.status) != 1   #SOLVED
-        error("Not able to find the max expected return of efficient frontier")
-    end
-    y = ClarabelQP(E, V, x.obj_val * (muShft - 1), u, d, G, g, A, b)
-    if Int(y.status) != 1   #SOLVED
-        error("Not able to find the max expected return efficient portfolio")
-    end
 
-    Y = y.s
-    iu = u .!= Inf
-    D = Y[(1:N).+(M+J+1)] .< tolS
-    U = falses(N)
-    U[iu] = Y[(1:sum(iu)).+(M+J+N+1)] .< tolS
-    S = fill(IN, N + J)
-    Sv = @view S[1:N]
-    Sv[D] .= DN
-    Sv[U] .= UP
-    if J > 0
-        Se = @view S[(1:J).+N]
-        Se .= EO
-        Og = Y[(1:J).+(M+1)] .> tolS
-        Se[Og] .= OE
-    end
-    computeCL!(aCL, S, PS, nS)
-end
-=#
-
-#=
-function cECL(PS::Problem; numSettings=Settings(PS))
-#using ClarabelLP thr initCL!
-    aCL = Vector{sCL{typeof(PS).parameters[1]}}(undef, 0)
-    if !initCL!(aCL, PS; nS=numSettings)
-        error("Not able to find the first Critical Line")
-    end
-    t = aCL[end]
-    while true
-        S = copy(t.S)
-        q = t.I0
-        for k in eachindex(q)
-            c = q[k]
-            To = c.To
-            id = c.id
-            if To == EO || To == OE
-                id += PS.N
-            end
-            S[id] = To
-        end
-        #display(Int(S)')
-        if computeCL!(aCL, S, PS, numSettings)
-            t = aCL[end]
-            if t.L0 <= 0
-                break
-            end
-        else
-            display(Int(S)')
-            error("Critical Line Not Finished")
-        end
-        #display(t)
-        #error("Debug ...")
-    end
-    return aCL
-end
-=#
-
-function badK(S, PS, nS)
+function badK(S, PS, nS)    #infeasible to compute CL
     (; u, d, G, g, A, b, N, J) = PS
 
     Sv = @view S[1:N]
@@ -573,7 +422,7 @@ end
 
         cbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), oneCL=true, K=PS.M+PS.J+1) where T
 
-compute one or all (oneCL=false, K=PS.M) the Critical Line Segments by enumerating (combinations of Status)
+compute one or all (oneCL=false, K=PS.M) the Critical Line Segments by enumerating (combinations of Status). Save the CL(s) to aCL if done
 
 
 """

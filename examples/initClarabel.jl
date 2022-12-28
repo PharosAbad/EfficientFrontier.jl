@@ -52,7 +52,7 @@ println("connecting Critical Line Segments:  ", ts, "  seconds")    #0.303391205
 
 
 println("\n--- connecting Critical Line Segments: init by default `SimplexCL!`  ---\n")
-ts = @elapsed aCL = EfficientFrontier.ECL(Pu)   #using numerical solver
+ts = @elapsed aCL = EfficientFrontier.ECL(Pu)   #using Simplex solver
 aEF = eFrontier(aCL, Pu)
 println("connecting Critical Line Segments:  ", ts, "  seconds")    #0.061639485  seconds
 
