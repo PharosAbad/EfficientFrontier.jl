@@ -361,6 +361,10 @@ function SimplexLP(PS::Problem{T}, tol=sqrt(eps(T)); rule=:Dantzig) where {T}
 
     (q, B, invB, iH, f) = Solver(-Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
 
+    for k in N+1:N+J
+        S[k] = S[k] == IN ? OE : EO
+    end
+
     return S, iH, q, f
 
 end
@@ -656,7 +660,7 @@ function LPcbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {T}
     (S, iH, q, f) = SimplexLP(PS, tolS; rule=rule)
     #(S, iH, q) = SimplexLP(PS, nS.tolS)
     #display((S, iH))
-    j0 = 0
+    #= j0 = 0
     for i in 1:J
         n = N + i
         #S[n] = S[n] == IN ? OE : EO
@@ -666,7 +670,9 @@ function LPcbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {T}
             S[n] = EO
             j0 += 1
         end
-    end
+    end =#
+    j0 = sum(S[N+1:N+J] .== EO)
+
     #iH = iH[iH .<= N]   #It seems shoud be do so
     nH = length(iH)
     if nH == 0  #unique solution
