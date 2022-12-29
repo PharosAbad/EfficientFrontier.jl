@@ -103,7 +103,8 @@ println("now convert the raw data to BigFloat to improve precision (raw data to 
 #S = Status[UP, IN, DN, UP, DN, DN, DN, DN, DN, IN, OE, OE]
 S = aCL[1].S
 Pb = Problem(Eb, Vb, ub, db, Gb, gb)
-aCLb = Vector{sCL{typeof(Pb).parameters[1]}}(undef, 0)
+#aCLb = Vector{sCL{typeof(Pb).parameters[1]}}(undef, 0)
+aCLb = sCL(Pb)
 computeCL!(aCLb, S, Pb, Settings(Pb))
 #computeCL!(aCLb, S, Pb, Settings{BigFloat}(tolL = BigFloat(2)^-51)) #if the data is first truncated by Float64, adjust the TolL
 

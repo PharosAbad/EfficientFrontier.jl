@@ -7,7 +7,8 @@ export ClarabelCL!
 
 function ClarabelQP(E::Vector{T}, V::Matrix{T}, mu::T, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, Ae::Matrix{T}, be::Vector{T}) where {T}
     N = length(E)
-    iu = u .!= Inf
+    #iu = u .!= Inf
+    iu = u .< Inf
     P = sparse(V)
     q = zeros(T, N) #Clarabel need P, q, A, b to be in type T
     A = sparse([E'; Ae; G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]])
@@ -22,7 +23,8 @@ end
 
 function ClarabelLP(E::Vector{T}, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, Ae::Matrix{T}, be::Vector{T}) where {T}
     N = length(E)
-    iu = u .!= Inf  #Float64(Inf) == BigFloat(Inf)
+    #iu = u .!= Inf  #Float64(Inf) == BigFloat(Inf)
+    iu = u .< Inf
     P = sparse(zeros(T, N, N))
     q = -E
     A = sparse([Ae; G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]])
@@ -57,7 +59,8 @@ function ClarabelCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where
     end
 
     Y = y.s
-    iu = u .!= Inf
+    #iu = u .!= Inf
+    iu = u .< Inf
     D = Y[(1:N).+(M+J+1)] .< tolS
     U = falses(N)
     U[iu] = Y[(1:sum(iu)).+(M+J+N+1)] .< tolS

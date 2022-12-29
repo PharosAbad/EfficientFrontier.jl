@@ -1,5 +1,5 @@
 #When there is an upper bound, we may use the `Clarabel.jl` (an interior point numerical solver) to find a CL
-# In particular, if in addition N is large, e.g., N>30  (the solution space may reach 3^N, and at least 2^N for combinatorial search)
+# v1.0  the default Simplex method is the best. Faster speed and less resource than Clarabel
 
 # S&P 500 data, the Covariance matrix is not positive define
 #https://gitlab.math.ethz.ch/maechler/CLA/-/raw/master/data/muS.sp500.rda
@@ -39,6 +39,7 @@ Pu = Problem(E, V, u)
 
 #DO NOT do this, unless you have a quantum computer
 #ts = @elapsed aCLu = EfficientFrontier.ECL(Pu; init=cbCL!)
+# with upper bound, if N is large, e.g., N>30  (the solution space may reach 3^N, and at least 2^N for combinatorial search)
 
 if length(filter((x) -> x == :uClarabel, names(Main, imported=true))) == 0
     include("./uClarabel.jl")
@@ -52,7 +53,7 @@ println("connecting Critical Line Segments:  ", ts, "  seconds")    #0.303391205
 
 
 println("\n--- connecting Critical Line Segments: init by default `SimplexCL!`  ---\n")
-ts = @elapsed aCL = EfficientFrontier.ECL(Pu)   #using Simplex solver
+ts = @elapsed aCL = EfficientFrontier.ECL(Pu)   #v1.0   using Simplex solver
 aEF = eFrontier(aCL, Pu)
 println("connecting Critical Line Segments:  ", ts, "  seconds")    #0.061639485  seconds
 

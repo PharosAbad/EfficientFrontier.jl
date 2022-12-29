@@ -28,8 +28,8 @@ V = [ 133.0  39.0  36.0  -17.0  -28.0   31.0   -5.0   -6.0  -34.0  -10.0  -46.0 
       -63.0   9.0  50.0  165.0  119.0  145.0  225.0  142.0  239.0  322.0  269.0  342.0  359.0  556.0 ]
 
 #E = [ 0.1 0.7 0.8 2.3 2.2 1.9 5.6 5.6 2.2 1.3 0.7 -0.1 4.1 7.2 ]
-E0 = [7.2 0.7 0.8 2.3 2.2 1.9 5.6 5.6 7.2 1.3 0.7 -0.1 4.1 7.2] # 3 assets share the highest expected return
-E = vec(E0)
+E = [7.2 0.7 0.8 2.3 2.2 1.9 5.6 5.6 7.2 1.3 0.7 -0.1 4.1 7.2] # 3 assets share the highest expected return
+E = vec(E)
 
 m = markowitz(E, V)
 unit_sum(m) # total weight = 100%
@@ -41,7 +41,7 @@ display(f.weights)
 P = Problem(E, V; equilibrate=false)
 ts = @elapsed aCL = EfficientFrontier.ECL(P)
 aEF = eFrontier(aCL, P)
-println("connecting Critical Line Segments:  ", ts, "  seconds")   #0.00056 seconds
+println("connecting Critical Line Segments:  ", ts, "  seconds")   #0.00077 seconds
 display(aEF.Z)
 
 println("

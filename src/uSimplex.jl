@@ -3,6 +3,10 @@ module uSimplex
 using LinearAlgebra, Combinatorics, EfficientFrontier
 export SimplexCL!
 
+#=
+REMARK: writing the next basis as a product of the current basis times an easily invertible matrix can be extended over several iterations. We do not adopt this for accuracy
+    If this method is adopt, how often should one recompute an inverse of the current basis?
+=#
 
 """
         cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
@@ -380,8 +384,7 @@ function WolfeLP!(L, c, A, b, d, B, S; invB, q, tol=2^-26)
     Y = invB * A[:, F]
     h = c[F] - Y' * c[B]
     ih = S[F] .== DN
-    ih = (h .< -tol) .&& (C[F])
-    #hp = h[ih]
+    ih = (h .< -tol) .&& C[F]
 
     iH = findall(F)[ih]
     nH = length(iH)
@@ -433,8 +436,7 @@ function WolfeLP!(L, c, A, b, d, B, S; invB, q, tol=2^-26)
         q = invB * b - Y * x[F]
         h = c[F] - Y' * c[B]
         ih = S[F] .== DN
-        ih = (h .< -tol) .&& (C[F])
-        #hp = h[ih]
+        ih = (h .< -tol) .&& C[F]
         iH = findall(F)[ih]
         nH = length(iH)
     end
@@ -446,7 +448,7 @@ function WolfeLP!(L, c, A, b, d, B, S; invB, q, tol=2^-26)
     return nothing
 end
 
-function SimplexQP(mu, aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {T}
+function SimplexQP!(mu, aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {T}
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
 
 
@@ -463,8 +465,6 @@ function SimplexQP(mu, aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) whe
     Ns = N + J
 
     #convert upper bound to equality
-    #iu = us .!= Inf
-    #nu = sum(iu)
     iu = findall(us .< Inf)
     nu = length(iu)
     Vu = [Vs zeros(T, Ns, nu)
@@ -506,20 +506,6 @@ function SimplexQP(mu, aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) whe
 
 
     S = S1[1:Ns]
-    #= if nu > 0
-        #Sz = @view S[1:N]
-        #Sy = @view S[Ns+1:Nu]
-        m = 1
-        for k in iu
-        #for k in 1:N
-            #if Sz[k] == IN
-            if S1[k] == IN
-                #S1[k] = Sy[m] == IN ? IN : UP
-                S1[k] = S[Ns+m] == IN ? IN : UP
-            end
-            m += 1
-        end
-    end =#
     m = 1
     for k in iu
         if S[k] == IN
@@ -527,12 +513,7 @@ function SimplexQP(mu, aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) whe
         end
         m += 1
     end
-    #= if J > 0
-        Se = @view S[N+1:Ns]
-        for k in 1:J
-            S1[N+k] = Se[k] == IN ? OE : EO
-        end
-    end =#
+
     for k in N+1:N+J
         S[k] = S[k] == IN ? OE : EO
     end
@@ -561,7 +542,7 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where 
     end
 
     mu = f * (muShft - 1)
-    return SimplexQP(mu, aCL, PS; nS=nS)
+    return SimplexQP!(mu, aCL, PS; nS=nS)
     #display((f,mu))
     #= nH = length(iH)
     if nH == 0
@@ -686,49 +667,9 @@ function LPcbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {T}
             j0 += 1
         end
     end
-    #return S, iH
-    # display((S, iH, q))
     #iH = iH[iH .<= N]   #It seems shoud be do so
     nH = length(iH)
     if nH == 0  #unique solution
-        #=
-        #check if hit a boundary point
-        ip = findall(S .== IN)
-        n = 1
-        for i in ip
-            t = q[n]
-            if abs(t-d[i]) < tolS
-            #if isapprox(t, d[i])
-                S[i] = DN
-            elseif abs(t-u[i]) < tolS   #isapprox(t, u[i])
-                S[i] = UP
-            end
-            n += 1
-        end
-
-        ip = findall(S .== IN)
-        n = length(ip)
-
-        if n == 0
-            #return (S, iH)
-            cbk = 1:N
-            cbK = combinations(cbk, max(2, M))
-            #cbK = combinations(cbk, 1)
-            Sb = copy(S)
-            for ii in cbK       #for IN
-                S[ii] .= IN
-                #display((ii, S))
-                if computeCL!(aCL, S, PS, nS)
-                    return true
-                end
-                S[ii] = Sb[ii]
-            end
-        else    #NOT a boundary point
-            #display("NOT a boundary point")
-            #display((n, S))
-            return computeCL!(aCL, S, PS, nS)
-        end
-        =#
         if !computeCL!(aCL, S, PS, nS)
             #check if hit a boundary point
             ip = findall(S .== IN)
@@ -759,36 +700,15 @@ function LPcbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {T}
                     S[ii] = Sb[ii]
                 end
             else    #NOT a boundary point
-                #display("NOT a boundary point")
-                #display((n, S))
                 return computeCL!(aCL, S, PS, nS)
             end
         end
 
     else
-        #= S = Status[DN, DN, DN, DN, DN, DN, DN, DN, DN, DN, DN, DN, DN, IN]
-        iH = [9, 11]
-        iH = sort([iH;findall(S .== IN)])
-        nH = length(iH)
-        Sb = copy(S)
-        for k in M:nH
-        #for k in 1:nH
-            cbK = combinations(iH, k)
-            #cbK = combinations(cbk, 1)
-            for ii in cbK       #for IN
-                S[ii] .= IN
-                display((-ii, S))
-                if computeCL!(aCL, S, PS, nS)
-                    return true
-                end
-                S[ii] = Sb[ii]
-            end
-        end =#
         aH = sort([iH; findall(S .== IN)])
         return oneCL!(aCL, PS, S, aH)
     end
     return false
-    #return S, iH
 end
 
 end

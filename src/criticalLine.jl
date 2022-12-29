@@ -310,7 +310,8 @@ See also [`Problem`](@ref), [`Settings`](@ref)
 """
 function ECL(PS::Problem; numSettings=Settings(PS), init::Function=SimplexCL!)
 #function ECL(PS::Problem; numSettings=Settings(PS), init::Function=cbCL!)
-    aCL = Vector{sCL{typeof(PS).parameters[1]}}(undef, 0)    
+    #aCL = Vector{sCL{typeof(PS).parameters[1]}}(undef, 0)
+    aCL = sCL(PS)
     init(aCL, PS; nS=numSettings)
     if lastindex(aCL) == 0
         error("Not able to find the first Critical Line")

@@ -15,12 +15,6 @@ if length(filter((x) -> x == :Markowitz, names(Main, imported=true))) == 0
     using .Markowitz
 end
 
-#=
-if length(filter((x) -> x == :EfficientFrontier, names(Main, imported=true))) == 0
-    include("../src/EfficientFrontier.jl")
-    using .EfficientFrontier
-end
-=#
 
 
 
