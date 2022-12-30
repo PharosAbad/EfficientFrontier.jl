@@ -96,12 +96,12 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
     beta = VQ * EF    #β=V_{I}⁻¹Qμ_{I}
 
     ik = findall(F)
-    if K == 1
+    #= if K == 1
         k = ik[1]
         if abs(alpha[1]-d[k]) < tolG || abs(alpha[1]-u[k]) < tolG   #a boundary point
             return false
         end
-    end
+    end =#
 
     #α_{λ}=-C(T′c+b_{E})
     alphaL = -(TC' * c + C * bE)
@@ -132,7 +132,8 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
                 push!(LE0, Event{T}(IN, UP, j, uL))
             end
         else
-            if !(d[j]-tolG < h < u[j]+tolG)
+            if !(d[j]+tolG < h < u[j]-tolG) #d[j]-tolG < h < d[j]+tolG means it is on the boundary!, so to u[j]
+            #if !(d[j]-tolG < h < u[j]+tolG)
                 return false
             end
 
@@ -158,7 +159,8 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
                 push!(LE0, Event{T}(UP, IN, j, dL))
             end
         else
-            if (D[j] && h <= -tolG) || (U[j] && h >= tolG)
+            #if (D[j] && h <= -tolG) || (U[j] && h >= tolG)
+            if (D[j] && h < tolG) || (U[j] && h > -tolG)
                 return false
             end
         end
@@ -180,7 +182,8 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
         elseif t < -tolG
             push!(LE1, Event{T}(EO, OE, j, dL))
         else
-            if h <= -tolG
+            if h <= -tolG   #z_{oA}≥0
+            #if h < tolG
                 return false
             end
         end
@@ -218,7 +221,8 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
             elseif t < -tolG
                 push!(LE1, Event{T}(OE, EO, j, dL))
             else
-                if h <= -tolG
+                if h < tolG
+                #if h <= -tolG
                     return false
                 end
             end
