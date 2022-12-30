@@ -61,7 +61,6 @@ display(f.weights)
 
 
 #EfficientFrontier
-E = vec(E)
 A = [1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0
     1.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0]
 b = [1.0; 0.25]
@@ -87,17 +86,19 @@ println("equilibrate:  ", ts, "  seconds") #0.000916927  seconds
 
 
 #BigFloat
-Pb = Problem(convert(Vector{BigFloat},E), V, u, d, G, g, A, b)
+Pb = Problem(convert(Vector{BigFloat},vec(E)), V, u, d, G, g, A, b)
 ts = @elapsed aCLb = EfficientFrontier.ECL(Pb)
 aEFb = eFrontier(aCLb, Pb)
 println("BigFloat:  ", ts, "  seconds")   #0.006389718  seconds
 
+#=
 if length(filter((x) -> x == :uClarabel, names(Main, imported=true))) == 0
     include("./uClarabel.jl")
     using .uClarabel
 end
 ts = @elapsed aCLc = EfficientFrontier.ECL(Pb; init=ClarabelCL!)
 println("BigFloat (init by `Clarabel.jl`):  ", ts, "  seconds")   #0.037 seconds, slower than Float64
+=#
 
 #println("improvements  ", round.([maximum(abs.(aEFb.Z-aEF.Z)), maximum(abs.(aEFt.Z-aEF.Z))], sigdigits=3))
 #println("BigFloat over Float64+equilibrate, improvements: ", round(maximum(abs.(aEFb.Z-aEFt.Z)), sigdigits=3))

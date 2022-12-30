@@ -1,4 +1,4 @@
-"Full Efficient Frontier by connecting Critical Line Segments"
+"Entire Efficient Frontier by Status-Segment Method "
 module EfficientFrontier
 
 #using LinearAlgebra, Clarabel, SparseArrays, Combinatorics

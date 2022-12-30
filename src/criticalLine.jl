@@ -303,7 +303,7 @@ the return aCL has the follwing structure
             beta::Vector{T}         # K x 1
         end
 
-See https://github.com/PharosAbad/EfficientFrontier.jl/wiki
+See [`Documentation for EfficientFrontier.jl`](https://github.com/PharosAbad/EfficientFrontier.jl/wiki)
 
 See also [`Problem`](@ref), [`Settings`](@ref)
 

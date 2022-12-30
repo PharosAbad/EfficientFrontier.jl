@@ -154,6 +154,7 @@ function Problem(E, V;
     Vq = convert(Matrix{FloatT}, (V+V')/2)   #make sure symmetric
     #@assert det(Vq)>=-sqrt(eps(FloatT)) "variance matrix has negative determinant"
     @assert det(Vq)>=0 "variance matrix has negative determinant"
+    #REMARK: we do NOT convert Gz  ≤ g into Gz +s = g, to make sure V>0
     eE::FloatT = one(FloatT)
     eV::FloatT = one(FloatT)
     if equilibrate
