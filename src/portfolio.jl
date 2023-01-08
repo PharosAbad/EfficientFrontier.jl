@@ -3,7 +3,7 @@
 
         aEF = eFrontier(aCL::Vector{sCL{T}}, PS::Problem{T}; tolNorm = 2^-26) where T
 
-compute the Full Efficient Frontier by connecting Critical Line Segments
+compute the Full Efficient Frontier by Status-Segment Method
 
 the return aEF has the follwing structure
 

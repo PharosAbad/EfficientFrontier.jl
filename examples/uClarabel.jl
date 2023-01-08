@@ -1,5 +1,6 @@
 "using Clarabel to do LP and QP"
 module uClarabel
+# promising, but too BIG, if the dep Pardiso can be removed, it will be perfect
 
 using LinearAlgebra, Clarabel, SparseArrays, EfficientFrontier
 export ClarabelQP, ClarabelLP

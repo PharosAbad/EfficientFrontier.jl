@@ -387,7 +387,7 @@ function WolfeLP!(L, c, A, b, d, B, S; invB, q, tol=2^-26)
 
     Y = invB * A[:, F]
     h = c[F] - Y' * c[B]
-    ih = S[F] .== DN
+    #ih = S[F] .== DN
     ih = (h .< -tol) .&& C[F]
 
     iH = findall(F)[ih]
@@ -422,16 +422,20 @@ function WolfeLP!(L, c, A, b, d, B, S; invB, q, tol=2^-26)
             m = m == 0 ? L : m
             C[m] = false
             C[m+L] = false
+            #m = k<=L ? k+L : k
+            #C[m] = false
         end
         if l <= 2 * L
             m = mod(l, L)
             m = m == 0 ? L : m
             C[m] = true
             C[m+L] = true
+            #m = l<=L ? l+L : l
+            #C[m] = true
         end
 
 
-        B = sort(B)
+        B .= sort(B)
         invB = inv(A[:, B])
         S[k] = IN
         S[l] = DN
@@ -439,7 +443,7 @@ function WolfeLP!(L, c, A, b, d, B, S; invB, q, tol=2^-26)
         Y = invB * A[:, F]
         q = invB * b - Y * x[F]
         h = c[F] - Y' * c[B]
-        ih = S[F] .== DN
+        #ih = S[F] .== DN
         ih = (h .< -tol) .&& C[F]
         iH = findall(F)[ih]
         nH = length(iH)
@@ -449,6 +453,7 @@ function WolfeLP!(L, c, A, b, d, B, S; invB, q, tol=2^-26)
     #iH = findall(F)[ih]
     #x[B] = q
     #return q, B, invB, iH, x
+    display(B')
     return nothing
 end
 
@@ -486,7 +491,7 @@ function SimplexQP!(mu, aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) wh
     b0 = [bu; zeros(T, Nu)]
     d0 = [du; zeros(T, Nu + 2 * Mu)]
     M0 = Mu + Nu
-    N0 = 2 * (Nu + Mu)
+    N0 = 2 * M0 #(Nu + Mu)
 
     #introduction of artificial variables
     b1 = b0
@@ -504,12 +509,13 @@ function SimplexQP!(mu, aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) wh
     q = abs.(q - b0)
     c1 = [zeros(T, N0); fill(one(T), M0)]
     #M1 = M0
-    #N1 = N0 + M0
+    #N1 = 3*M0
 
     WolfeLP!(Nu, c1, A1, b1, d1, B, S1; invB=invB, q=q, tol=nS.tol)
 
 
     S = S1[1:Ns]
+    display((N0, S))
     m = 1
     for k in iu
         if S[k] == IN
@@ -544,7 +550,7 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where 
     if computeCL!(aCL, S, PS, nS)
         return true
     end
-
+    display("------- SimplexQP!  -------")
     mu = f * (muShft - 1)
     return SimplexQP!(mu, aCL, PS; nS=nS)
     #display((f,mu))

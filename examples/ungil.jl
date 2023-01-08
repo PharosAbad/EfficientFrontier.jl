@@ -43,7 +43,7 @@ V = [ 133.0  39.0  36.0  -17.0  -28.0   31.0   -5.0   -6.0  -34.0  -10.0  -46.0 
 
 E = [ 0.1 0.7 0.8 2.3 2.2 1.9 5.6 5.6 2.2 1.3 0.7 -0.1 4.1 7.2 ]
 
-println("\n--- connecting Critical Line Segments vs Markowitz's CLA  ---\n")
+println("\n--- Status-Segment Method vs Markowitz's CLA  ---\n")
 
 class = vec([:FI :FI :FI :FI :FI :FI :FI :ALT :ALT :ALT :EQ :EQ :EQ :EQ])
 m = markowitz(E, V, names=assets, # asset bounds by class: stocks -10/30, bonds 0/20, alt. 0/10
@@ -76,7 +76,7 @@ P = Problem(E, V, u, d, G, g, A, b)
 ts = @elapsed aCL = EfficientFrontier.ECL(P)
 aEF = eFrontier(aCL, P)
 #display(aCL)    #there are 2  singular CL (beta is a zero vector, a line in R^(N+J+M+1) space, but a single point in mean-variance space )
-println("connecting Critical Line Segments:  ", ts, "  seconds") #0.000833465  seconds
+println("Status-Segment Method:  ", ts, "  seconds") #0.000833465  seconds
 display(aEF.Z)  # Kinks on the frontier due to singular CL
 
 Pt = Problem(E, V, u, d, G, g, A, b; equilibrate=true)

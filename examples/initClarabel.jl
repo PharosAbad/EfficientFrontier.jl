@@ -19,7 +19,7 @@ V = values(sp5h["muS.sp500"]["covar"])
 V = (V+V')/2
 
 
-println("\n--- connecting Critical Line Segments vs Markowitz's CLA  ---\n")
+println("\n--- Status-Segment Method vs Markowitz's CLA  ---\n")
 
 if length(filter((x) -> x == :Markowitz, names(Main, imported=true))) == 0
     include("./Markowitz.jl")
@@ -45,17 +45,17 @@ if length(filter((x) -> x == :uClarabel, names(Main, imported=true))) == 0
     include("./uClarabel.jl")
     using .uClarabel
 end
-println("\n--- connecting Critical Line Segments: init by `Clarabel.jl`   ---\n")
+println("\n--- Status-Segment Method: init by `Clarabel.jl`   ---\n")
 
 ts = @elapsed aCLu = EfficientFrontier.ECL(Pu; init=ClarabelCL!)   #using numerical solver
 aEFu = eFrontier(aCLu, Pu)
-println("connecting Critical Line Segments:  ", ts, "  seconds")    #0.303391205  seconds
+println("Status-Segment Method:  ", ts, "  seconds")    #0.303391205  seconds
 
 
-println("\n--- connecting Critical Line Segments: init by default `SimplexCL!`  ---\n")
+println("\n--- Status-Segment Method: init by default `SimplexCL!`  ---\n")
 ts = @elapsed aCL = EfficientFrontier.ECL(Pu)   #v1.0   using Simplex solver
 aEF = eFrontier(aCL, Pu)
-println("connecting Critical Line Segments:  ", ts, "  seconds")    #0.061639485  seconds
+println("Status-Segment Method:  ", ts, "  seconds")    #0.061639485  seconds
 
 
 #=

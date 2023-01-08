@@ -8,14 +8,14 @@ function Int(v::Vector{Status})
 end
 
 
-function getRows(A, nS)
+function getRows(A, tolNorm)
     #indicate the non-redundant rows, the 1st row should be non-zeros (vector one here)
     H = @view A[1:1, :]
     R = falses(size(A, 1))
     R[1] = true
     for r in axes(A, 1)[(begin+1):end]
         v = @view A[r, :]
-        if norm(v - H' * (H' \ v)) > nS.tolNorm
+        if norm(v - H' * (H' \ v)) > tolNorm
             R[r] = true
             H = @view A[R, :]
         end
@@ -32,7 +32,7 @@ compute the Critical Line Segment for S::Vector{Status}, save to aCL[end]. Retur
 """
 function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::Settings{T}) where {T}
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
-    (; tolL, tolG) = nS
+    (; tolNorm, tolL, tolG) = nS
 
     Sv = @view S[1:N]
     F = (Sv .== IN)
@@ -50,8 +50,8 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
     zB[U[B]] = u[U]
     AB = vcat(A[:, B], GE[:, B])
     bE = vcat(b, g[Eg]) - AB * zB
-    rb = getRows([AE bE], nS)
-    if length(getRows(AE, nS)) != length(rb)
+    rb = getRows([AE bE], tolNorm)
+    if length(getRows(AE, tolNorm)) != length(rb)
         return false    #infeasible
     else
         AE = AE[rb, :]
@@ -159,8 +159,8 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
                 push!(LE0, Event{T}(UP, IN, j, dL))
             end
         else
-            #if (D[j] && h <= -tolG) || (U[j] && h >= tolG)
-            if (D[j] && h < tolG) || (U[j] && h > -tolG)
+            if (D[j] && h <= -tolG) || (U[j] && h >= tolG)
+            #if (D[j] && h < tolG) || (U[j] && h > -tolG)
                 return false
             end
         end
@@ -221,8 +221,8 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
             elseif t < -tolG
                 push!(LE1, Event{T}(OE, EO, j, dL))
             else
-                if h < tolG
-                #if h <= -tolG
+                #if h < tolG
+                if h <= -tolG
                     return false
                 end
             end
@@ -328,7 +328,7 @@ end
 
 
 
-function badK(S, PS, nS)    #infeasible to compute CL
+function badK(S, PS, tolNorm)    #infeasible to compute CL
     (; u, d, G, g, A, b, N, J) = PS
 
     Sv = @view S[1:N]
@@ -344,8 +344,8 @@ function badK(S, PS, nS)    #infeasible to compute CL
     zB[U[B]] = u[U]
     AB = vcat(A[:, B], GE[:, B])
     bE = vcat(b, g[Eg]) - AB * zB
-    rb = getRows([AE bE], nS)
-    if length(getRows(AE, nS)) != length(rb)
+    rb = getRows([AE bE], tolNorm)
+    if length(getRows(AE, tolNorm)) != length(rb)
         return true    #infeasible
     else
         AE = AE[rb, :]
@@ -366,7 +366,8 @@ Return value: true if done
 
 """
 function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), incL=false) where {T}
-    (; N, M) = PS
+    #(; N, M) = PS
+    N = PS.N
     t = aCL[end]
     S = copy(t.S)
     while true
@@ -400,7 +401,7 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
                 S[id] = To
             end
         end
-        if badK(S, PS, numSettings)
+        if badK(S, PS, numSettings.tolNorm)
         #if sum(S .== IN) <= M + sum(S .== EO)
             break
         end

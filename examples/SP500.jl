@@ -7,7 +7,7 @@ using EfficientFrontier
 using LinearAlgebra
 using Serialization
 
-println("\n--- connecting Critical Line Segments vs Markowitz's CLA  ---\n")
+println("\n--- Status-Segment Method vs Markowitz's CLA  ---\n")
 
 # download https://gitlab.math.ethz.ch/maechler/CLA/-/raw/master/data/muS.sp500.rda to /tmp
 sp5h = load("/tmp/muS.sp500.rda")
@@ -39,6 +39,6 @@ P = Problem(E, V; equilibrate=false)
 ts = @elapsed aCL = EfficientFrontier.ECL(P)
 aEF = eFrontier(aCL, P)
 t1 = time()
-println("connecting Critical Line Segments:  ", ts, "  seconds")    #0.039446974  seconds
+println("Status-Segment Method:  ", ts, "  seconds")    #0.039446974  seconds
 #display(t1 - t0)    #0.083 seconds
 display(aEF.Z)

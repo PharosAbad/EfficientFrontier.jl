@@ -10,7 +10,7 @@ if length(filter((x) -> x == :Markowitz, names(Main, imported=true))) == 0
     using .Markowitz
 end
 
-println("\n--- connecting Critical Line Segments vs Markowitz's CLA  ---\n")
+println("\n--- Status-Segment Method vs Markowitz's CLA  ---\n")
 
 V = [ 133.0  39.0  36.0  -17.0  -28.0   31.0   -5.0   -6.0  -34.0  -10.0  -46.0  -68.0  -52.0  -63.0
        39.0  16.0  17.0   10.0    0.0   22.0   13.0    7.0    1.0   19.0    3.0    0.0    5.0    9.0
@@ -40,7 +40,7 @@ display(f.weights)
 P = Problem(E, V; equilibrate=false)
 ts = @elapsed aCL = EfficientFrontier.ECL(P)
 aEF = eFrontier(aCL, P)
-println("connecting Critical Line Segments:  ", ts, "  seconds")   #0.00077 seconds
+println("Status-Segment Method:  ", ts, "  seconds")   #0.00077 seconds
 display(aEF.Z)
 
 println("

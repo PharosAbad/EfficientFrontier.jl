@@ -51,7 +51,7 @@ display(f.weights)
 P = Problem(E, V, u, d, G, g)
 ts = @elapsed aCL = EfficientFrontier.ECL(P)
 aEF = eFrontier(aCL, P)
-println("connecting Critical Line Segments:  ", ts, "  seconds")   #0.0004 seconds
+println("Status-Segment Method:  ", ts, "  seconds")   #0.0004 seconds
 display(aEF.Z)
 
 # the CLA in Markowitz and Todd (2000) assumes either one IN or one OUT.
