@@ -387,7 +387,6 @@ function WolfeLP!(L, c, A, b, d, B, S; invB, q, tol=2^-26)
 
     Y = invB * A[:, F]
     h = c[F] - Y' * c[B]
-    #ih = S[F] .== DN
     ih = (h .< -tol) .&& C[F]
 
     iH = findall(F)[ih]
@@ -418,24 +417,17 @@ function WolfeLP!(L, c, A, b, d, B, S; invB, q, tol=2^-26)
 
         #Complementary slackness
         if k <= 2 * L
-            m = mod(k, L)
-            m = m == 0 ? L : m
-            C[m] = false
-            C[m+L] = false
-            #m = k<=L ? k+L : k
-            #C[m] = false
+            C[k] = false
+            C[k<=L ? k+L : k-L] = false
         end
         if l <= 2 * L
-            m = mod(l, L)
-            m = m == 0 ? L : m
-            C[m] = true
-            C[m+L] = true
-            #m = l<=L ? l+L : l
-            #C[m] = true
+            C[l] = true
+            C[l<=L ? l+L : l-L] = true
         end
 
 
-        B .= sort(B)
+        #B .= sort(B)
+        sort!(B)
         invB = inv(A[:, B])
         S[k] = IN
         S[l] = DN
@@ -443,17 +435,10 @@ function WolfeLP!(L, c, A, b, d, B, S; invB, q, tol=2^-26)
         Y = invB * A[:, F]
         q = invB * b - Y * x[F]
         h = c[F] - Y' * c[B]
-        #ih = S[F] .== DN
         ih = (h .< -tol) .&& C[F]
         iH = findall(F)[ih]
         nH = length(iH)
     end
-
-    #ih = abs.(h) .< tol   # h==0
-    #iH = findall(F)[ih]
-    #x[B] = q
-    #return q, B, invB, iH, x
-    display(B')
     return nothing
 end
 
@@ -515,7 +500,14 @@ function SimplexQP!(mu, aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) wh
 
 
     S = S1[1:Ns]
-    display((N0, S))
+
+    #display((N0, B, S))
+    #=  Remark: if the only non-zero AV (artificial variable) is the one  for z′μ=μ, it may not be a problem. The KKT are hold, but for other mu value. 
+    very slow, see N=263 in EF-dev-0108.jl
+    WolfeLP! has a good chance only if mu is very close to the highest expected return, as in our case.  It doese not work 100%.
+      It does not work for general QP. Since the K (IN, not on boundary) in a QP is variable, but LP has a fixed B (on boundary if degenarated).
+    =#
+
     m = 1
     for k in iu
         if S[k] == IN
@@ -550,7 +542,7 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where 
     if computeCL!(aCL, S, PS, nS)
         return true
     end
-    display("------- SimplexQP!  -------")
+    #display("------- SimplexQP!  -------")
     mu = f * (muShft - 1)
     return SimplexQP!(mu, aCL, PS; nS=nS)
     #display((f,mu))
