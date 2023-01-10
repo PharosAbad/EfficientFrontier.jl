@@ -4,10 +4,8 @@ authors = ["Pharos Abad"]
 version = "1.0.1"
 
 [deps]
-COSMO = "1e616198-aa4e-51ec-90a2-23f7fbd31d8d"
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-RipQP = "1e40b3f8-35eb-4cd8-8edd-3e515bb9de08"
 
 [compat]
 Combinatorics = "1"

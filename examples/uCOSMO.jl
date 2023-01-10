@@ -1,5 +1,6 @@
 "using COSMO to do LP and QP"
 module uCOSMO
+#https://github.com/oxfordcontrol/COSMO.jl/issues/161   can't install COSMO & Clarabel.jl together
 # 1000 times slower than Clarabel
 # max_iter=N*10000, otherwise Max_iter_reached
 
