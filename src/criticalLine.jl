@@ -509,3 +509,16 @@ function cbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), oneCL=true,
     end
     return nothing
 end
+
+
+function ipLP(P::Problem{T}; options=optionsQP{T}()) where {T}
+    #mu for GHVEP (Global Highest Variance Efficient Portfolio)
+    (; E, u, d, G, g, A, b, N, M, J) = P
+    iu = findall(u .< Inf)
+    C = [G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]]
+    gq = [g; -d; u[iu]]
+    L = J + N + length(iu)
+    Q = OOQP{T}(zeros(T, N, N), A, C, -E, b, gq, N, M, L)
+    solveOOQP(Q; options=options)
+end
+

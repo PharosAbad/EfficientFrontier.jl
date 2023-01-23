@@ -1,16 +1,17 @@
 # S&P 500 data, the Covariance matrix is not positive define
 #https://gitlab.math.ethz.ch/maechler/CLA/-/raw/master/data/muS.sp500.rda
 
-using CodecXz
-using RData
-using EfficientFrontier
-using LinearAlgebra
-using Serialization
-
+using EfficientFrontier, LinearAlgebra, CodecXz, Serialization, Downloads
 println("\n--- Status-Segment Method vs Markowitz's CLA  ---\n")
 
+#=
+#------------ rda
+using RData
+
 # download https://gitlab.math.ethz.ch/maechler/CLA/-/raw/master/data/muS.sp500.rda to /tmp
-sp5h = load("/tmp/muS.sp500.rda")
+# sp5h = load("/tmp/muS.sp500.rda")
+sp500 = Downloads.download("https://gitlab.math.ethz.ch/maechler/CLA/-/raw/master/data/muS.sp500.rda")
+sp5h = load(sp500)  #RData
 
 E = values(sp5h["muS.sp500"]["mu"])
 V = values(sp5h["muS.sp500"]["covar"])
@@ -20,6 +21,23 @@ V = values(sp5h["muS.sp500"]["covar"])
 V = (V+V')/2    #make sure symetry
 #maximum(V - V') # 0.0
 #display(norm(V - V'))
+#------------ rda
+=#
+
+
+#---------- jls.xz
+using TranscodingStreams
+
+xzFile = Downloads.download("https://github.com/PharosAbad/PharosAbad.github.io/raw/master/files/sp500.jls.xz")
+
+io = open(xzFile)
+io = TranscodingStream(XzDecompressor(), io)
+E = deserialize(io)
+V = deserialize(io)
+close(io)
+#---------- jls.xz
+
+
 println("rank(V):  ", rank(V))  #263
 
 

@@ -7,9 +7,6 @@ using Test
         1/80 1/16 1/40
         1/100 1/40 1/25]
     E = [109 / 100; 23 / 20; 119 / 100]
-
-        
-    #v0.3.0
     P = Problem(E, V; equilibrate=false)
     aCL = EfficientFrontier.ECL(P)
     aEF = eFrontier(aCL, P)

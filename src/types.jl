@@ -82,11 +82,11 @@ sCL(args...) = sCL{Float64}(args...)
 
 """
 
-        Problem(E, V; u, d, G, g, A, b, equilibrate)
-        Problem(E, V, u; equilibrate)
-        Problem(E, V, u, d; equilibrate)
-        Problem(E, V, u, d, G, g; equilibrate)
-        Problem(E, V, u, d, G, g, A, b; equilibrate)
+        Problem(E::T, V; u, d, G, g, A, b, equilibrate) where T
+        Problem(E::T, V, u; equilibrate) where T
+        Problem(E::T, V, u, d; equilibrate) where T
+        Problem(E::T, V, u, d, G, g; equilibrate) where T
+        Problem(E::T, V, u, d, G, g, A, b; equilibrate) where T
 
 Setup a Portfolio Selection model: for mean vector E and variance matrix V
 
@@ -137,12 +137,12 @@ struct Problem{T<:AbstractFloat}
 end
 
 function Problem(E, V;
-    u = fill(Inf, length(E)),
-    d = zeros(length(E)),
-    G = ones(0, length(E)),
-    g = ones(0),
-    A = ones(1, length(E)),
-    b = ones(1),
+    u=fill(Inf, length(E)),
+    d=zeros(length(E)),
+    G=ones(0, length(E)),
+    g=ones(0),
+    A=ones(1, length(E)),
+    b=ones(1),
     equilibrate=false)
 
     FloatT = typeof(E).parameters[1]
@@ -151,9 +151,9 @@ function Problem(E, V;
     sum(abs.(E)) == 0 && error("mean vector == 0")
     sum(abs.(V)) == 0 && error("variance matrix == 0")
     Eq = copy(vec(E))     #make sure vector and a new copy
-    Vq = convert(Matrix{FloatT}, (V+V')/2)   #make sure symmetric
+    Vq = convert(Matrix{FloatT}, (V + V') / 2)   #make sure symmetric
     #@assert det(Vq)>=-sqrt(eps(FloatT)) "variance matrix has negative determinant"
-    @assert det(Vq)>=0 "variance matrix has negative determinant"
+    @assert det(Vq) >= 0 "variance matrix has negative determinant"
     #REMARK: we do NOT convert Gz  ≤ g into Gz +s = g, to make sure V>0
     eE::FloatT = one(FloatT)
     eV::FloatT = one(FloatT)
@@ -163,11 +163,11 @@ function Problem(E, V;
         Eq ./= eE
         Vq ./= eV
     end
-    
+
     M::Int32 = length(b)
     J::Int32 = length(g)
     N == size(u, 1) || throw(DimensionMismatch("incompatible dimension: u"))
-    N == size(d, 1) || throw(DimensionMismatch("incompatible dimension: d"))    
+    N == size(d, 1) || throw(DimensionMismatch("incompatible dimension: d"))
     (J, N) == size(G) || throw(DimensionMismatch("incompatible dimension: G"))
     (M, N) == size(A) || throw(DimensionMismatch("incompatible dimension: A"))
 
@@ -181,23 +181,23 @@ function Problem(E, V;
     u[iu] .= 0  #make sure u >= 0
 
 
-    
+
     @assert sum(d) < 1 "the sum of downside/lower bound is greater than 1"
     @assert sum(u) > 1 "the sum of upside/higher bound is less than 1"
 
     Problem{FloatT}(Eq, Vq,
-        convert(Vector{FloatT}, copy(vec(u)) ),
-        convert(Vector{FloatT}, copy(vec(d)) ),
+        convert(Vector{FloatT}, copy(vec(u))),
+        convert(Vector{FloatT}, copy(vec(d))),
         convert(Matrix{FloatT}, copy(G)),   #make a copy, just in case it is modified somewhere
-        convert(Vector{FloatT}, copy(vec(g)) ),
+        convert(Vector{FloatT}, copy(vec(g))),
         convert(Matrix{FloatT}, copy(A)),
-        convert(Vector{FloatT}, copy(vec(b)) ), N, M, J, equilibrate, eE, eV)
+        convert(Vector{FloatT}, copy(vec(b))), N, M, J, equilibrate, eE, eV)
 end
 
-Problem(E, V, u; equilibrate=false) = Problem(E, V; u = u, equilibrate=equilibrate)
-Problem(E, V, u, d; equilibrate=false) = Problem(E, V; u = u, d = d, equilibrate=equilibrate)
-Problem(E, V, u, d, G, g; equilibrate=false) = Problem(E, V; u = u, d = d, G = G, g = g, equilibrate=equilibrate)
-Problem(E, V, u, d, G, g, A, b; equilibrate=false) = Problem(E, V; u = u, d = d, G = G, g = g, A = A, b = b, equilibrate=equilibrate)
+Problem(E, V, u; equilibrate=false) = Problem(E, V; u=u, equilibrate=equilibrate)
+Problem(E, V, u, d; equilibrate=false) = Problem(E, V; u=u, d=d, equilibrate=equilibrate)
+Problem(E, V, u, d, G, g; equilibrate=false) = Problem(E, V; u=u, d=d, G=G, g=g, equilibrate=equilibrate)
+Problem(E, V, u, d, G, g, A, b; equilibrate=false) = Problem(E, V; u=u, d=d, G=G, g=g, A=A, b=b, equilibrate=equilibrate)
 
 
 function sCL(P::Problem)
@@ -232,30 +232,30 @@ struct Settings{T<:AbstractFloat}
 end
 
 Settings(; kwargs...) = Settings{Float64}(; kwargs...)
-function Settings{Float64}(; tol = 2^-26, 
-    tolNorm = 2^-26, 
-    tolS = 2^-26, 
-    tolL = 2^-26, 
-    tolG = 2^-26, 
-    muShft = 2^-18,
-    rule = :Dantzig)
+function Settings{Float64}(; tol=2^-26,
+    tolNorm=2^-26,
+    tolS=2^-26,
+    tolL=2^-26,
+    tolG=2^-26,
+    muShft=2^-18,
+    rule=:Dantzig)
     Settings{Float64}(tol, tolNorm, tolS, tolL, tolG, muShft, rule)
 end
 
-function Settings{BigFloat}(; tol = BigFloat(2)^-76 , 
-    tolNorm = BigFloat(2)^-76, 
+function Settings{BigFloat}(; tol=BigFloat(2)^-76,
+    tolNorm=BigFloat(2)^-76,
     #tolS = BigFloat(2)^-76,     #BigFloat(2)^-26
-    tolS = BigFloat(2)^-26, #waiting for Clarabel.Settings to update for BigFloat
-    tolL = BigFloat(2)^-76, 
-    tolG = BigFloat(2)^-76, 
+    tolS=BigFloat(2)^-26, #waiting for Clarabel.Settings to update for BigFloat
+    tolL=BigFloat(2)^-76,
+    tolG=BigFloat(2)^-76,
     #muShft = BigFloat(2)^-27)
-    muShft = BigFloat(2)^-18,
-    rule = :Dantzig)
+    muShft=BigFloat(2)^-18,
+    rule=:Dantzig)
     Settings{BigFloat}(tol, tolNorm, tolS, tolL, tolG, muShft, rule)
 end
 
 function Settings(P::Problem; kwargs...)
-#function Settings(P::Problem)
+    #function Settings(P::Problem)
     Settings{typeof(P).parameters[1]}(; kwargs...)
 end
 
@@ -279,4 +279,25 @@ struct sEF    #Efficient Frontier       Float64 is OK
     sgm::Vector{Float64}   #higher sigma
     Z::Matrix{Float64}
     ic::Vector{Int64}
+end
+
+
+function OOQP(P::Problem{T}; mu::T=-Inf) where {T}
+    #mu=-Inf => L = 0, the Global Minimum Variance Portfolio
+    (; E, V, u, d, G, g, A, b, N, M, J) = P
+    Aq = A
+    bq = b
+    iu = findall(u .< Inf)
+    C = [G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]]
+    gq = [g; -d; u[iu]]
+    Lq = J + N + length(iu)
+    q = zeros(T, N)
+    if mu == Inf  #EfficientFrontier @ L=1
+        q = -E
+    elseif mu != -Inf   #given mu
+        Aq = [A; E']
+        bq = [b; mu]
+        M += 1
+    end
+    OOQP{T}(V, Aq, C, q, bq, gq, N, M, Lq)
 end
