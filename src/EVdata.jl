@@ -35,7 +35,8 @@ function EVdata(ds::Symbol, verbose=true)
             -63.0 9.0 50.0 165.0 119.0 145.0 225.0 142.0 239.0 322.0 269.0 342.0 359.0 556.0]
         E = [0.1, 0.7, 0.8, 2.3, 2.2, 1.9, 5.6, 5.6, 2.2, 1.3, 0.7, -0.1, 4.1, 7.2]
     elseif ds == :SP500
-        println(" 
+        println("\n SP500 data is too big to fit in, using the following link to fetch the data
+        https://github.com/PharosAbad/EfficientFrontier.jl/blob/main/examples/SP500.jl#L7L37
         ")
         V = zeros(0,0)
         E = zeros(0)
@@ -43,5 +44,14 @@ function EVdata(ds::Symbol, verbose=true)
         V = zeros(0,0)
         E = zeros(0)
     end
+
+    if verbose
+        println("\n mean vector: ")
+        display(E')
+        println("\n variance matrix: ")
+        display(V)
+    end
+
+    return E, V
 
 end

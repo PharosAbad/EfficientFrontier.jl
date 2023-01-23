@@ -18,10 +18,9 @@ include("./criticalLine.jl")
 
 include("./portfolio.jl")
 
-#include("./uClarabel.jl")
-#using .uClarabel
-
 include("./uSimplex.jl")
 using .uSimplex
+
+include("./EVdata.jl")
 
 end

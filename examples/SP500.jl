@@ -1,9 +1,10 @@
 # S&P 500 data, the Covariance matrix is not positive define
 #https://gitlab.math.ethz.ch/maechler/CLA/-/raw/master/data/muS.sp500.rda
 
-using EfficientFrontier, LinearAlgebra, CodecXz, Serialization, Downloads
+using EfficientFrontier
 println("\n--- Status-Segment Method vs Markowitz's CLA  ---\n")
 
+using LinearAlgebra, CodecXz, Serialization, Downloads
 #=
 #------------ rda
 using RData
@@ -17,13 +18,11 @@ E = values(sp5h["muS.sp500"]["mu"])
 V = values(sp5h["muS.sp500"]["covar"])
 
 #display(norm(V - V'))
-
 V = (V+V')/2    #make sure symetry
 #maximum(V - V') # 0.0
 #display(norm(V - V'))
 #------------ rda
 =#
-
 
 #---------- jls.xz
 using TranscodingStreams
