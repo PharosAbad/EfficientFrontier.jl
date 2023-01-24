@@ -12,7 +12,7 @@ ts = @elapsed aCL = EfficientFrontier.ECL(P)
 aEF = eFrontier(aCL, P)
 println("Status-Segment Method:  ", ts, "  seconds")    #0.000936215  seconds
 display(aCL[10:11])
-display(aEF.Z)
+display(aEF.Z[1:9,:])
 
 
 if length(filter((x) -> x == :Markowitz, names(Main, imported=true))) == 0
@@ -24,6 +24,9 @@ m = markowitz(E, V; upper=u)
 unit_sum(m) # total weight = 100%
 ts = @elapsed f = frontier(m)
 println("Markowitz CLA:  ", ts, "  seconds")     #0.14 seconds
-display(f.weights)
-norm(aEF.Z[1:2,:]-f.weights[1:2,:], Inf)
-(aEF.Z[3,:]-f.weights[3,:])'
+display(f.weights[1:12,:])
+#norm(aEF.Z[1:2,:]-f.weights[1:2,:], Inf)
+#(aEF.Z[3,:]-f.weights[3,:])'
+
+f.ret[1:12]'
+#norm(aEF.Z[9:end,:]-f.weights[12:end,:], Inf)

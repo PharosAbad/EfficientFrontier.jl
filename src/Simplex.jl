@@ -10,9 +10,21 @@ REMARK: writing the next basis as a product of the current basis times an easily
     If this method is adopt, how often should one recompute an inverse of the current basis?
 =#
 
+"""
+
+        Settings(P::Problem; kwargs...)        The default Settings to given Problem
+        Settings(; kwargs...)       The default Settings is set by Float64 type
+        Settings{T<:AbstractFloat}(; kwargs...)
+
+kwargs are from the fields of Settings{T<:AbstractFloat} for Float64 and BigFloat
+
+            tol::T          #general scalar
+            rule::Symbol    #rule for Simplex {:Dantzig, :maxImprovement}
+
+"""
 struct Settings{T<:AbstractFloat}
     tol::T         #general scalar
-    rule::Symbol    #rule for pivoting
+    rule::Symbol    #rule for Simplex {:Dantzig, :maxImprovement}
 end
 
 Settings(; kwargs...) = Settings{Float64}(; kwargs...)
@@ -25,8 +37,9 @@ function Settings{BigFloat}(; tol=BigFloat(2)^-76,
     Settings{BigFloat}(tol, rule)
 end
 
-function Settings(P::Problem; kwargs...)
-    Settings{typeof(P).parameters[1]}(; kwargs...)
+function Settings(P::Problem{T}; kwargs...) where {T}
+    #Settings{typeof(P).parameters[1]}(; kwargs...)
+    Settings{T}(; kwargs...)
 end
 
 

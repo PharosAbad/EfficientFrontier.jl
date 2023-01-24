@@ -1,17 +1,14 @@
 "Entire Efficient Frontier by Status-Segment Method "
 module EfficientFrontier
 
-#using LinearAlgebra, Clarabel, SparseArrays, Combinatorics
+export Status, IN, DN, UP, OE, EO, Event, sCL, Problem, Settings, sEF
+export computeCL!, ECL!, cbCL!, eFrontier, ePortfolio
+
 using LinearAlgebra, Combinatorics
+
 using LightenQP: LightenQP, solveOOQP
 import LightenQP: OOQP, Settings as SettingsQP
-
-
-#export Status, Event, sCL, aCL, computeCL, ECL, CornerP
-export Status, Event, sCL, IN, DN, UP, OE, EO
-export Settings, Problem, sEF, eFrontier, ePortfolio
-export computeCL!, ECL!, cbCL!
-export OOQP, SettingsQP #, Solution, solveOOQP    #from LightenQP
+export OOQP, SettingsQP, solveOOQP #, Solution   #from LightenQP
 
 include("./types.jl")
 
@@ -22,7 +19,7 @@ include("./portfolio.jl")
 include("./Simplex.jl")
 using .Simplex: Simplex, SimplexLP
 import .Simplex: Settings as SettingsLP
-export SettingsLP
+export SettingsLP, SimplexLP
 
 include("./EVdata.jl")
 

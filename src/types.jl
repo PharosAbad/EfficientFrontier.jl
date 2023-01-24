@@ -206,7 +206,7 @@ end
 
 """
 
-        Settings(P::Problem)        The default Settings to given Problem
+        Settings(P::Problem; kwargs...)        The default Settings to given Problem
         Settings(; kwargs...)       The default Settings is set by Float64 type
         Settings{T<:AbstractFloat}(; kwargs...)
 
@@ -214,21 +214,20 @@ kwargs are from the fields of Settings{T<:AbstractFloat} for Float64 and BigFloa
 
             tol::T         #general scalar
             tolNorm::T     #for norms
-            tolS::T        #for s from Clarabel, or tol for Simplex
+            tolS::T        #for identifying S
             tolL::T        #for L
             tolG::T        #for Greeks (beta and gamma)
-            muShft::T      #shift the max mu to (1-muShft)*mu
-            rule::Symbol    #rule for Simplex {:Dantzig, :maxImprovement}
+            muShft::T      #shift the mu to (1 +/- muShft)*mu
 
 """
 struct Settings{T<:AbstractFloat}
     tol::T         #general scalar
     tolNorm::T     #for norms
-    tolS::T       #for s from Clarabel, or tol for Simplex
+    tolS::T        #for identifying S
     tolL::T        #for L
     tolG::T        #for Greeks (beta and gamma)
-    muShft::T      #shift the max mu to (1-muShft)*mu
-    rule::Symbol    #rule for Simplex
+    muShft::T      #shift the mu to (1 +/- muShft)*mu
+    #rule::Symbol    #rule for Simplex
 end
 
 Settings(; kwargs...) = Settings{Float64}(; kwargs...)
@@ -237,9 +236,10 @@ function Settings{Float64}(; tol=2^-26,
     tolS=2^-26,
     tolL=2^-26,
     tolG=2^-26,
-    muShft=2^-18,
-    rule=:Dantzig)
-    Settings{Float64}(tol, tolNorm, tolS, tolL, tolG, muShft, rule)
+    muShft=2^-18) #,
+    #rule=:Dantzig)
+    #Settings{Float64}(tol, tolNorm, tolS, tolL, tolG, muShft, rule)
+    Settings{Float64}(tol, tolNorm, tolS, tolL, tolG, muShft)
 end
 
 function Settings{BigFloat}(; tol=BigFloat(2)^-76,
@@ -249,14 +249,16 @@ function Settings{BigFloat}(; tol=BigFloat(2)^-76,
     tolL=BigFloat(2)^-76,
     tolG=BigFloat(2)^-76,
     #muShft = BigFloat(2)^-27)
-    muShft=BigFloat(2)^-18,
-    rule=:Dantzig)
-    Settings{BigFloat}(tol, tolNorm, tolS, tolL, tolG, muShft, rule)
+    muShft=BigFloat(2)^-18)  #,
+    #rule=:Dantzig)
+    #Settings{BigFloat}(tol, tolNorm, tolS, tolL, tolG, muShft, rule)
+    Settings{BigFloat}(tol, tolNorm, tolS, tolL, tolG, muShft)
 end
 
-function Settings(P::Problem; kwargs...)
+function Settings(P::Problem{T}; kwargs...) where {T}
     #function Settings(P::Problem)
-    Settings{typeof(P).parameters[1]}(; kwargs...)
+    #Settings{typeof(P).parameters[1]}(; kwargs...)
+    Settings{T}(; kwargs...)
 end
 
 
@@ -307,7 +309,3 @@ function SettingsQP(P::Problem{T}; kwargs...) where {T}
     SettingsQP{T}(;kwargs...)
 end
 
-function SettingsLP(P::Problem{T}; kwargs...) where {T}
-    Simplex.Settings{T}(; kwargs...)
-    #SettingsLP{T}(; kwargs...)
-end

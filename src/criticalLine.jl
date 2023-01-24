@@ -284,10 +284,6 @@ end
 
 
 
-
-
-
-
 """
 
         aCL = ECL(PS::Problem; init::Function=SimplexCL!; numSettings = Settings(PS), settings=SettingsQP(PS), settingsLP=SettingsLP(PS))
@@ -328,35 +324,6 @@ function ECL(PS::Problem; init::Function=SimplexCL!, numSettings=Settings(PS), s
 end
 
 
-
-function badK0(S, PS, tolNorm)    #infeasible to compute CL
-    (; u, d, G, g, A, b, N, J) = PS
-
-    Sv = @view S[1:N]
-    F = (Sv .== IN)
-    B = .!F
-    U = (Sv .== UP)
-    Se = @view S[(N.+(1:J))]
-    Eg = (Se .== EO)
-    GE = @view G[Eg, :]
-    AE = vcat(A[:, F], GE[:, F])
-
-    zB = d[B]
-    zB[U[B]] = u[U]
-    AB = vcat(A[:, B], GE[:, B])
-    bE = vcat(b, g[Eg]) - AB * zB
-    rb = getRows([AE bE], tolNorm)
-    if length(getRows(AE, tolNorm)) != length(rb)
-        return true    #infeasible
-    else
-        AE = AE[rb, :]
-    end
-    K = sum(F)
-    if K < size(AE, 1)    # <:  infeasible,  or =: no freedom
-        return true
-    end
-    return false
-end
 
 function badK(S, PS, tolNorm)    #infeasible to compute CL
     (; u, d, G, g, A, b, N, J) = PS
@@ -483,7 +450,7 @@ function getMu(PS::Problem{T}, t, incL) where {T}
     z[D] = d[D]
     z[U] = u[U]
     z[F] = t.alpha + t.beta * (incL ? t.L1 : t.L0)
-    mu = z' * E
+    return z' * E
 end
 
 """
