@@ -1,7 +1,7 @@
 name = "EfficientFrontier"
 uuid = "cc5db6c5-6ee2-4027-b902-77472ae9c2f7"
 authors = ["Pharos Abad"]
-version = "1.0.2"
+version = "1.1.0"
 
 [deps]
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
@@ -9,8 +9,9 @@ LightenQP = "732b1220-b3b1-47df-92b9-9aafce73c71b"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [compat]
-Combinatorics = "1"
-julia = "1.8"
+Combinatorics = ">= 1"
+LightenQP = ">= 0.2.2"
+julia = ">= 1.8"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

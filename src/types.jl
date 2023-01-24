@@ -301,3 +301,13 @@ function OOQP(P::Problem{T}; mu::T=-Inf) where {T}
     end
     OOQP{T}(V, Aq, C, q, bq, gq, N, M, Lq)
 end
+
+function SettingsQP(P::Problem{T}; kwargs...) where {T}
+    #LightenQP.Settings{T}(;kwargs...)
+    SettingsQP{T}(;kwargs...)
+end
+
+function SettingsLP(P::Problem{T}; kwargs...) where {T}
+    Simplex.Settings{T}(; kwargs...)
+    #SettingsLP{T}(; kwargs...)
+end

@@ -6,7 +6,7 @@ println("\n--- Status-Segment Method vs Markowitz's CLA  ---\n")
 
 using LinearAlgebra, CodecXz, Serialization, Downloads
 #=
-#------------ rda
+#------------ rda <<<
 using RData
 
 # download https://gitlab.math.ethz.ch/maechler/CLA/-/raw/master/data/muS.sp500.rda to /tmp
@@ -21,10 +21,10 @@ V = values(sp5h["muS.sp500"]["covar"])
 V = (V+V')/2    #make sure symetry
 #maximum(V - V') # 0.0
 #display(norm(V - V'))
-#------------ rda
+#------------ rda >>>
 =#
 
-#---------- jls.xz
+#---------- jls.xz <<<
 using TranscodingStreams
 
 xzFile = Downloads.download("https://github.com/PharosAbad/PharosAbad.github.io/raw/master/files/sp500.jls.xz")
@@ -34,7 +34,7 @@ io = TranscodingStream(XzDecompressor(), io)
 E = deserialize(io)
 V = deserialize(io)
 close(io)
-#---------- jls.xz
+#---------- jls.xz >>>
 
 
 println("rank(V):  ", rank(V))  #263

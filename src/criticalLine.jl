@@ -132,8 +132,8 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
                 push!(LE0, Event{T}(IN, UP, j, uL))
             end
         else
-            if !(d[j]+tolG < h < u[j]-tolG) #d[j]-tolG < h < d[j]+tolG means it is on the boundary!, so to u[j]
-            #if !(d[j]-tolG < h < u[j]+tolG)
+            if !(d[j] + tolG < h < u[j] - tolG) #d[j]-tolG < h < d[j]+tolG means it is on the boundary!, so to u[j]
+                #if !(d[j]-tolG < h < u[j]+tolG)
                 return false
             end
 
@@ -160,7 +160,7 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
             end
         else
             if (D[j] && h <= -tolG) || (U[j] && h >= tolG)
-            #if (D[j] && h < tolG) || (U[j] && h > -tolG)
+                #if (D[j] && h < tolG) || (U[j] && h > -tolG)
                 return false
             end
         end
@@ -183,7 +183,7 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
             push!(LE1, Event{T}(EO, OE, j, dL))
         else
             if h <= -tolG   #z_{oA}≥0
-            #if h < tolG
+                #if h < tolG
                 return false
             end
         end
@@ -290,7 +290,7 @@ end
 
 """
 
-        aCL = ECL(PS::Problem; numSettings = Settings(PS), init::Function=SimplexCL!)
+        aCL = ECL(PS::Problem; init::Function=SimplexCL!; numSettings = Settings(PS), settings=SettingsQP(PS), settingsLP=SettingsLP(PS))
 
 compute all the Critical Line Segments. Init the CL by Simplex Method (combinatorial search `init=cbCL!`)
 
@@ -312,23 +312,24 @@ See [`Documentation for EfficientFrontier.jl`](https://github.com/PharosAbad/Eff
 See also [`Problem`](@ref), [`Settings`](@ref)
 
 """
-function ECL(PS::Problem; numSettings=Settings(PS), init::Function=SimplexCL!)
-#function ECL(PS::Problem; numSettings=Settings(PS), init::Function=cbCL!)
+function ECL(PS::Problem; init::Function=SimplexCL!, numSettings=Settings(PS), settings=SettingsQP(PS), settingsLP=SettingsLP(PS))
+#function ECL(PS::Problem; numSettings=Settings(PS), init::Function=SimplexCL!, settings=SettingsQP(PS))
+    #function ECL(PS::Problem; numSettings=Settings(PS), init::Function=cbCL!)
     #aCL = Vector{sCL{typeof(PS).parameters[1]}}(undef, 0)
     aCL = sCL(PS)
-    init(aCL, PS; nS=numSettings)
+    init(aCL, PS; nS=numSettings, settings=settings, settingsLP=settingsLP)
     if lastindex(aCL) == 0
         error("Not able to find the first Critical Line")
     end
 
-    ECL!(aCL, PS; numSettings=numSettings, incL=true)
-    ECL!(aCL, PS; numSettings=numSettings)
+    ECL!(aCL, PS; numSettings=numSettings, incL=true, settings=settings)
+    ECL!(aCL, PS; numSettings=numSettings, settings=settings)
     return aCL
 end
 
 
 
-function badK(S, PS, tolNorm)    #infeasible to compute CL
+function badK0(S, PS, tolNorm)    #infeasible to compute CL
     (; u, d, G, g, A, b, N, J) = PS
 
     Sv = @view S[1:N]
@@ -352,21 +353,54 @@ function badK(S, PS, tolNorm)    #infeasible to compute CL
     end
     K = sum(F)
     if K < size(AE, 1)    # <:  infeasible,  or =: no freedom
-        return true 
+        return true
     end
     return false
 end
 
+function badK(S, PS, tolNorm)    #infeasible to compute CL
+    (; u, d, G, g, A, b, N, J) = PS
+
+    Sv = @view S[1:N]
+    F = (Sv .== IN)
+    B = .!F
+    U = (Sv .== UP)
+    Se = @view S[(N.+(1:J))]
+    Eg = (Se .== EO)
+    GE = @view G[Eg, :]
+    AE = vcat(A[:, F], GE[:, F])
+
+    zB = d[B]
+    zB[U[B]] = u[U]
+    AB = vcat(A[:, B], GE[:, B])
+    bE = vcat(b, g[Eg]) - AB * zB
+    rb = getRows([AE bE], tolNorm)
+    if length(getRows(AE, tolNorm)) != length(rb)
+        return true, -1    #infeasible
+    else
+        AE = AE[rb, :]
+    end
+    K = sum(F)
+    if K >= size(AE, 1) #good
+        return false, K
+    elseif K == 0   #degenarated
+        return true, 0
+    else
+        return true, -1    #infeasible
+    end
+end
+
 """
 
-       ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings = Settings(PS), incL=false)  where T
+       ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings = Settings(PS), incL=false, settings=SettingsQP(PS))  where T
 
-compute all the Critical Line Segments as L decreasing to 0 (increasing to +Inf if incL=true), given the first one in aCL[end]. 
+compute all the Critical Line Segments as L decreasing to 0 (increasing to +Inf if incL=true), given the first one in aCL[end].  The `settings` is the `LightenQP.Settings` setting from LightenQP
 Return value: true if done
 
 """
-function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), incL=false) where {T}
-    #(; N, M) = PS
+function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), incL=false, settings=SettingsQP(PS), settingsLP=SettingsLP(PS)) where {T}
+    #(; E, N) = PS
+    (; tol, tolNorm, tolS, muShft) = numSettings
     N = PS.N
     t = aCL[end]
     S = copy(t.S)
@@ -401,9 +435,27 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
                 S[id] = To
             end
         end
-        if badK(S, PS, numSettings.tolNorm)
-        #if sum(S .== IN) <= M + sum(S .== EO)
-            break
+
+        bad, K = badK(S, PS, tolNorm)
+        #if badK(S, PS, numSettings.tolNorm)
+        if bad
+            if K != 0   #infeasible
+                break
+            end
+            #degenarated
+            mu = getMu(PS, t, incL)
+            if incL
+                f = getfield(SimplexLP(PS; settings=settingsLP), 4)
+                if abs(mu + f) < tol  #hit HVEP
+                    break
+                end
+            else
+                muShft = -muShft    #going down
+            end
+            mu = mu * (muShft + 1)
+            Qm = OOQP(PS; mu=mu)    #EF @ mu
+            xm, status = solveOOQP(Qm; settings=settings)
+            S = getS(xm.s, PS, tolS)
         end
 
         if computeCL!(aCL, S, PS, numSettings)
@@ -411,9 +463,7 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
             if isinf(t.L1) || t.L0 <= 0
                 break
             end
-
         else
-            #return false
             display(Int(S)')
             error("Critical Line Not Finished")
         end
@@ -423,6 +473,18 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
     return true
 end
 
+function getMu(PS::Problem{T}, t, incL) where {T}
+    (; E, u, d, N) = PS
+    z = zeros(T, N)
+    S = @view t.S[1:N]
+    F = (S .== IN)
+    U = (S .== UP)
+    D = (S .== DN)
+    z[D] = d[D]
+    z[U] = u[U]
+    z[F] = t.alpha + t.beta * (incL ? t.L1 : t.L0)
+    mu = z' * E
+end
 
 """
 
@@ -432,7 +494,7 @@ compute one or all (oneCL=false, K=PS.M) the Critical Line Segments by enumerati
 
 
 """
-function cbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), oneCL=true, K=PS.M + PS.J + 1) where {T}
+function cbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), oneCL=true, K=PS.M + PS.J + 1, kwargs...) where {T}
     #(3^N -2^N -N*2^(N-1)) * 2^J cases  ( K= 0 -> 2^N ; K=1 -> N*2^(N-1))
     (; u, N, J) = PS
     cbk = 1:N
@@ -511,14 +573,51 @@ function cbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), oneCL=true,
 end
 
 
-function ipLP(P::Problem{T}; options=optionsQP{T}()) where {T}
-    #mu for GHVEP (Global Highest Variance Efficient Portfolio)
-    (; E, u, d, G, g, A, b, N, M, J) = P
+function ipLP(PS::Problem{T}; settings=SettingsQP(PS)) where {T}
+    #mu for HVEP (Highest Variance Efficient Portfolio)
+    (; E, u, d, G, g, A, b, N, M, J) = PS
     iu = findall(u .< Inf)
     C = [G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]]
     gq = [g; -d; u[iu]]
     L = J + N + length(iu)
     Q = OOQP{T}(zeros(T, N, N), A, C, -E, b, gq, N, M, L)
-    solveOOQP(Q; options=options)
+    solveOOQP(Q; settings=settings)
 end
 
+function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsQP(PS), settingsLP=SettingsLP(PS)) where {T}
+    #(; u, N, J) = PS
+    #(; muShft, tolS, rule) = nS
+
+    (S, iH, q, f) = SimplexLP(PS; settings=settingsLP)
+    if computeCL!(aCL, S, PS, nS)
+        return true
+    end
+    #mu = f * (muShft - 1)
+
+    #return SimplexQP!(mu, aCL, PS; nS=nS)
+    #Q = OOQP(PS; mu=mu)    #EF @ mu
+    Q = OOQP(PS)    # @L=0
+    x, status = solveOOQP(Q; settings=settings)    #may fail, leave it to computeCL!
+    S = getS(x.s, PS, nS.tolS)
+    computeCL!(aCL, S, PS, nS)
+
+end
+
+function getS(Y, PS, tolS)
+    (; u, N, J) = PS
+    iu = findall(u .< Inf)
+    D = Y[(1:N).+J] .< tolS
+    U = falses(N)
+    U[iu] = Y[(1:length(iu)).+(J+N)] .< tolS
+    S = fill(IN, N + J)
+    Sv = @view S[1:N]
+    Sv[D] .= DN
+    Sv[U] .= UP
+    if J > 0
+        Se = @view S[(1:J).+N]
+        Se .= EO
+        Og = Y[1:J] .> tolS
+        Se[Og] .= OE
+    end
+    return S
+end

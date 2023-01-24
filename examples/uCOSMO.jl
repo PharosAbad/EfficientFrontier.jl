@@ -55,7 +55,7 @@ compute the Critical Line Segments by COSMO.jl (Conic operator splitting method)
 
 
 """
-function COSMoCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {T}
+function COSMoCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), kwargs...) where {T}
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
     (; tolS, muShft) = nS
 

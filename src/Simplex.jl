@@ -1,12 +1,34 @@
 "Simplex algorithm"
-module uSimplex
-using LinearAlgebra, Combinatorics, EfficientFrontier
-export SimplexCL!
+module Simplex
+using LinearAlgebra, Combinatorics
+using EfficientFrontier: EfficientFrontier, Problem, Status, Event, sCL, IN, DN, UP, OE, EO, computeCL!
+import EfficientFrontier: Settings as SettingsEF    #if by `using`, the compiler will complain conflict when import Simplex.Settings in to EfficientFrontier as SettingsLP
+export SimplexLP #,SimplexCL!
 
 #=
 REMARK: writing the next basis as a product of the current basis times an easily invertible matrix can be extended over several iterations. We do not adopt this for accuracy
     If this method is adopt, how often should one recompute an inverse of the current basis?
 =#
+
+struct Settings{T<:AbstractFloat}
+    tol::T         #general scalar
+    rule::Symbol    #rule for pivoting
+end
+
+Settings(; kwargs...) = Settings{Float64}(; kwargs...)
+function Settings{Float64}(; tol=2^-26, rule=:Dantzig)
+    Settings{Float64}(tol, rule)
+end
+
+function Settings{BigFloat}(; tol=BigFloat(2)^-76,
+    rule=:Dantzig)
+    Settings{BigFloat}(tol, rule)
+end
+
+function Settings(P::Problem; kwargs...)
+    Settings{typeof(P).parameters[1]}(; kwargs...)
+end
+
 
 """
         cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
@@ -313,8 +335,10 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
     return q, B, invB, iH, c' * x
 end
 
-function SimplexLP(PS::Problem{T}, tol=sqrt(eps(T)); rule=:Dantzig) where {T}
+function SimplexLP(PS::Problem{T}; settings=Settings(PS)) where {T}
+#function SimplexLP(PS::Problem{T}, tol=sqrt(eps(T)); rule=:Dantzig) where {T}
     (; E, u, d, G, g, A, b, N, M, J) = PS
+    (; tol, rule) = settings
 
     Solver = cDantzigLP
     if rule == :maxImprovement
@@ -442,7 +466,7 @@ function WolfeLP!(L, c, A, b, d, B, S; invB, q, tol=2^-26)
     return nothing
 end
 
-function SimplexQP!(mu, aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {T}
+function SimplexQP!(mu, aCL::Vector{sCL{T}}, PS::Problem{T}; nS=SettingsEF(PS), settings=Settings(PS)) where {T}
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
 
 
@@ -496,7 +520,7 @@ function SimplexQP!(mu, aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) wh
     #M1 = M0
     #N1 = 3*M0
 
-    WolfeLP!(Nu, c1, A1, b1, d1, B, S1; invB=invB, q=q, tol=nS.tol)
+    WolfeLP!(Nu, c1, A1, b1, d1, B, S1; invB=invB, q=q, tol=settings.tol)
 
 
     S = S1[1:Ns]
@@ -534,32 +558,22 @@ compute the Critical Line Segments by Simplex method, for the highest expected r
 
 
 """
-function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {T}
+function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=SettingsEF(PS), settingsLP=Settings(PS), kwargs...) where {T}
+#function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=SettingsEF(PS), settings=Settings(PS), settingsLP=Settings(PS)) where {T}
     #(; u, d, N, M, J) = PS
-    (; muShft, tolS, rule) = nS
+    #(; muShft, tolS, rule) = nS
 
-    (S, iH, q, f) = SimplexLP(PS, tolS; rule=rule)
+    (S, iH, q, f) = SimplexLP(PS; settings=settingsLP)
     if computeCL!(aCL, S, PS, nS)
         return true
     end
     #display("------- SimplexQP!  -------")
-    mu = f * (muShft - 1)
-    return SimplexQP!(mu, aCL, PS; nS=nS)
-    #display((f,mu))
-    #= nH = length(iH)
-    if nH == 0
-        if !computeCL!(aCL, S, PS, nS)
-            return SimplexQP(mu, aCL, PS; nS=nS)
-        end
-        return true
-    else
-        return SimplexQP(mu, aCL, PS; nS=nS)
-    end =#
-
+    mu = f * (nS.muShft - 1)
+    return SimplexQP!(mu, aCL, PS; nS=nS, settings=settingsLP)
 end
 
 
-function oneCL!(aCL::Vector{sCL{T}}, PS::Problem{T}, S0::Vector{Status}, iH; nS=Settings(PS)) where {T}
+function oneCL!(aCL::Vector{sCL{T}}, PS::Problem{T}, S0::Vector{Status}, iH; nS=SettingsEF(PS)) where {T}
     #enumerating the states in iH for S0
     (; u, N) = PS
     iv = iH[iH.<=N]
@@ -648,27 +662,13 @@ function oneCL!(aCL::Vector{sCL{T}}, PS::Problem{T}, S0::Vector{Status}, iH; nS=
     return false
 end
 
-function LPcbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {T}
+function LPcbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=SettingsEF(PS), settings=Settings(PS), settingsLP=Settings(PS) ) where {T}
     #Simplex LP + combinations
     (; u, d, N, M, J) = PS
-    (; tolS, rule) = nS
+    #(; tolS, rule) = nS
+    tolS = nS.tolS
 
-
-    #(S, iH, q) = SimplexLP(PS, nS.tolS; rule=:maxImprovement)
-    (S, iH, q, f) = SimplexLP(PS, tolS; rule=rule)
-    #(S, iH, q) = SimplexLP(PS, nS.tolS)
-    #display((S, iH))
-    #= j0 = 0
-    for i in 1:J
-        n = N + i
-        #S[n] = S[n] == IN ? OE : EO
-        if S[n] == IN
-            S[n] = OE
-        else
-            S[n] = EO
-            j0 += 1
-        end
-    end =#
+    (S, iH, q, f) = SimplexLP(PS; settings=settingsLP)
     j0 = sum(S[N+1:N+J] .== EO)
 
     #iH = iH[iH .<= N]   #It seems shoud be do so
@@ -690,7 +690,6 @@ function LPcbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {T}
             ip = findall(S .== IN)
             n = length(ip)
             if n == 0   #a boundary point
-                #return (S, iH)
                 cbk = 1:N
                 cbK = combinations(cbk, max(2, M + j0))   #this works for j0==0, if j0>0, it will be complicated, the EO may turn OE when DN/UP go IN
                 #cbK = combinations(cbk, 1)
@@ -710,7 +709,7 @@ function LPcbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {T}
 
     else
         aH = sort([iH; findall(S .== IN)])
-        return oneCL!(aCL, PS, S, aH)
+        return oneCL!(aCL, PS, S, aH; nS=nS)
     end
     return false
 end

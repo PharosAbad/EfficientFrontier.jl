@@ -22,7 +22,7 @@ function ClarabelQP(E::Vector{T}, V::Matrix{T}, mu::T, u::Vector{T}, d::Vector{T
     Clarabel.solve!(solver)
 end
 
-# Global Minimum Variance Portfolio (GMVP )
+# Global Minimum Variance Portfolio (GMVP)
 function ClarabelQP(V::Matrix{T}, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, Ae::Matrix{T}, be::Vector{T}) where {T}
     N = length(d)
     iu = findall(u .< Inf)
@@ -63,7 +63,7 @@ compute the Critical Line Segments by Clarabel.jl (Interior Point QP), for the h
 
 
 """
-function ClarabelCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {T}
+function ClarabelCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), kwargs...) where {T}
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
     (; tolS, muShft) = nS
 
