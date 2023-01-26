@@ -539,7 +539,7 @@ function cbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), oneCL=true,
     return nothing
 end
 
-
+#Linear Programming
 function ipLP(PS::Problem{T}; settings=SettingsQP(PS)) where {T}
     #mu for HVEP (Highest Variance Efficient Portfolio)
     (; E, u, d, G, g, A, b, N, M, J) = PS
