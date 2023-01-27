@@ -6,7 +6,27 @@ using LinearAlgebra, Clarabel, SparseArrays, EfficientFrontier
 export ClarabelQP, ClarabelLP
 export ClarabelCL!
 
-function ClarabelQP(E::Vector{T}, V::Matrix{T}, mu::T, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, Ae::Matrix{T}, be::Vector{T}) where {T}
+function SettingsCl(PS::Problem{T}; kwargs...) where {T}
+#function SettingsCl{T}(; kwargs...) where {T}
+    settings = Clarabel.Settings{T}(; kwargs...)
+    #settings.verbose = false
+end
+
+function ClarabelQP(PS::Problem{T}, mu::T; settings= SettingsCl(PS; verbose = false)) where {T}
+    (; E, V, u, d, G, g, A, b, N, M, J) = PS
+    #N = length(E)
+    iu = findall(u .< Inf)
+    P = sparse(V)
+    q = zeros(T, N) #Clarabel need P, q, A, b to be in type T
+    Ac = sparse([E'; A; G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]])
+    bc = [mu; b; g; -d; u[iu]]
+    cones = [Clarabel.ZeroConeT(1 + M), Clarabel.NonnegativeConeT(J + N + length(iu))]    
+    solver = Clarabel.Solver{T}()
+    Clarabel.setup!(solver, P, q, Ac, bc, cones, settings)
+    Clarabel.solve!(solver)
+end
+
+function ClarabelQP0(E::Vector{T}, V::Matrix{T}, mu::T, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, Ae::Matrix{T}, be::Vector{T}) where {T}
     N = length(E)
     #iu = u .!= Inf
     iu = u .< Inf
@@ -23,7 +43,19 @@ function ClarabelQP(E::Vector{T}, V::Matrix{T}, mu::T, u::Vector{T}, d::Vector{T
 end
 
 # Global Minimum Variance Portfolio (GMVP)
-function ClarabelQP(V::Matrix{T}, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, Ae::Matrix{T}, be::Vector{T}) where {T}
+function ClarabelQP(PS::Problem{T}; settings= SettingsCl(PS; verbose = false)) where {T}
+    (; V, u, d, G, g, A, b, N, M, J) = PS
+    iu = findall(u .< Inf)
+    P = sparse(V)
+    q = zeros(T, N) #Clarabel need P, q, A, b to be in type T
+    Ac = sparse([A; G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]])
+    bc = [b; g; -d; u[iu]]
+    cones = [Clarabel.ZeroConeT(M), Clarabel.NonnegativeConeT(J + N + length(iu))]
+    solver = Clarabel.Solver{T}()
+    Clarabel.setup!(solver, P, q, Ac, bc, cones, settings)
+    Clarabel.solve!(solver)
+end
+function ClarabelQP0(V::Matrix{T}, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, Ae::Matrix{T}, be::Vector{T}) where {T}
     N = length(d)
     iu = findall(u .< Inf)
     P = sparse(V)
@@ -39,7 +71,20 @@ function ClarabelQP(V::Matrix{T}, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::V
 end
 
 
-function ClarabelLP(E::Vector{T}, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, Ae::Matrix{T}, be::Vector{T}) where {T}
+function ClarabelLP(PS::Problem{T}; settings= SettingsCl(PS; verbose = false)) where {T}
+    (; E, u, d, G, g, A, b, N, M, J) = PS
+    #N = length(E)
+    iu = findall(u .< Inf)
+    P = sparse(zeros(T, N, N))
+    q = -E
+    Ac = sparse([A; G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]])
+    bc = [b; g; -d; u[iu]]
+    cones = [Clarabel.ZeroConeT(M), Clarabel.NonnegativeConeT(J + N + length(iu))]    
+    solver = Clarabel.Solver{T}()
+    Clarabel.setup!(solver, P, q, Ac, bc, cones, settings)
+    Clarabel.solve!(solver)
+end
+function ClarabelLP0(E::Vector{T}, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, Ae::Matrix{T}, be::Vector{T}) where {T}
     N = length(E)
     #iu = u .!= Inf  #Float64(Inf) == BigFloat(Inf)
     iu = u .< Inf
@@ -57,26 +102,30 @@ end
 
 """
 
-        ClarabelCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where T
+        ClarabelCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsCl, kwargs...) where T
 
 compute the Critical Line Segments by Clarabel.jl (Interior Point QP), for the highest expected return. Save the CL to aCL if done
 
 
 """
-function ClarabelCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), kwargs...) where {T}
-    (; E, V, u, d, G, g, A, b, N, M, J) = PS
-    (; tolS, muShft) = nS
+function ClarabelCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsCl(PS; verbose = false), kwargs...) where {T}
+#function ClarabelCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), kwargs...) where {T}
+    #(; E, V, u, d, G, g, A, b, N, M, J) = PS
+    #(; E, V, u, d, G, g, A, b, N) = PS
+    #(; tolS, muShft) = nS
 
-    x = ClarabelLP(E, u, d, G, g, A, b)
+    #x = ClarabelLP(E, u, d, G, g, A, b)
+    x = ClarabelLP(PS; settings=settings)
     if Int(x.status) != 1   #SOLVED
-        error("Not able to find the max expected return of efficient frontier")
+        error("Not able to find the expected return of HMFP (Highest Mean Frontier Portfolio)")
     end
-    y = ClarabelQP(E, V, x.obj_val * (muShft - 1), u, d, G, g, A, b)
+    #y = ClarabelQP(E, V, x.obj_val * (muShft - 1), u, d, G, g, A, b)
+    y = ClarabelQP(PS, x.obj_val * (nS.muShft - 1); settings=settings)
     if Int(y.status) != 1   #SOLVED
-        error("Not able to find the max expected return efficient portfolio")
+        error("Not able to find a muShft to the HMFP (Highest Mean Frontier Portfolio)")
     end
 
-    Y = y.s
+    #= Y = y.s
     #iu = u .!= Inf
     iu = u .< Inf
     D = Y[(1:N).+(M+J+1)] .< tolS
@@ -91,7 +140,9 @@ function ClarabelCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), kwarg
         Se .= EO
         Og = Y[(1:J).+(M+1)] .> tolS
         Se[Og] .= OE
-    end
+    end =#
+    Y = y.s[PS.M+2:end]
+    S = EfficientFrontier.getS(Y, PS, nS.tolS)
     computeCL!(aCL, S, PS, nS)
 end
 

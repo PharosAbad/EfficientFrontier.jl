@@ -56,8 +56,6 @@ display(aEF.Z)
 Pb = Problem(convert(Vector{BigFloat}, E), V, u, d, G, g)
 #ts = @elapsed aCLb = EfficientFrontier.ECL(Pb; numSettings = Settings{BigFloat}(tolL = BigFloat(2)^-51))
 ts = @elapsed aCLb = EfficientFrontier.ECL(Pb; numSettings = Settings(Pb; tolL = BigFloat(2)^-51))
-#aCLc = EfficientFrontier.ECL(Pb; init=ClarabelCL!, numSettings = Settings{BigFloat}(tolL = BigFloat(2)^-51))
-#aCLc = EfficientFrontier.ECL(Pb; init=ClarabelCL!, numSettings = Settings(Pb; tolL = BigFloat(2)^-51))
 aEFb = eFrontier(aCLb, Pb)
 println("BigFloat:  ", ts, "  seconds")   #0.020 seconds
 #display(aEFb.Z)

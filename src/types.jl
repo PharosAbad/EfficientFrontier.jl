@@ -110,7 +110,7 @@ Default values: u = +∞, d = 0, G = [], g = [], A = ones(1,N), b = [1], and equ
     aCL = EfficientFrontier.ECL(P)  #compute all Critical Lines
     aEF = eFrontier(aCL, P)     #compute the Efficient Frontier
     mu = (aEF.mu[1]+aEF.mu[end])/2  #mu at the middle of Efficient Frontier
-    z = ePortfolio(mu, aEF)     #weight of the efficient portfolio given mu
+    z = ePortfolio(aEF, mu)     #weight of the efficient portfolio given mu
 
 ```
 
@@ -284,6 +284,7 @@ struct sEF    #Efficient Frontier       Float64 is OK
 end
 
 
+#=
 function OOQP(P::Problem{T}; mu::T=-Inf) where {T}
     #mu=-Inf => L = 0, the Global Minimum Variance Portfolio
     (; E, V, u, d, G, g, A, b, N, M, J) = P
@@ -303,9 +304,20 @@ function OOQP(P::Problem{T}; mu::T=-Inf) where {T}
     end
     OOQP{T}(V, Aq, C, q, bq, gq, N, M, Lq)
 end
+=#
+
+function OOQP(P::Problem{T}) where {T}
+    #Pack P into OOQP
+    (; E, V, u, d, G, g, A, b, N, M, J) = P
+    iu = findall(u .< Inf)
+    C = [G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]]
+    gq = [g; -d; u[iu]]
+    L = J + N + length(iu)
+    OOQP{T}(V, A, C, E, b, gq, N, M, L)
+end
 
 function SettingsQP(P::Problem{T}; kwargs...) where {T}
     #LightenQP.Settings{T}(;kwargs...)
-    SettingsQP{T}(;kwargs...)
+    SettingsQP{T}(; kwargs...)
 end
 

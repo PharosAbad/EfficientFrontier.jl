@@ -411,17 +411,21 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
             end
             #degenarated
             mu = getMu(PS, t, incL)
+            sgn = 1 #going down
             if incL
                 f = getfield(SimplexLP(PS; settings=settingsLP), 4)
-                if abs(mu + f) < tol  #hit HVEP
+                if abs(mu + f) < tol  #hit HMFP=HVEP
                     break
                 end
-            else
-                muShft = -muShft    #going down
+                sgn = -1    #going up
+            #else
+                #muShft = -muShft    #going down
             end
-            mu = mu * (muShft + 1)
-            Qm = OOQP(PS; mu=mu)    #EF @ mu
-            xm, status = solveOOQP(Qm; settings=settings)
+            #mu = mu * (muShft + 1)
+            mu = mu * (muShft*sgn + 1)
+            #Qm = OOQP(PS; mu=mu)    #EF @ mu
+            #xm, status = solveOOQP(Qm; settings=settings)
+            xm, status = fPortfolio(PS, mu; settings=settings, check=false) #FP(mu=mu)
             S = getS(xm.s, PS, tolS)
         end
 
@@ -540,7 +544,7 @@ function cbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), oneCL=true,
 end
 
 #Linear Programming
-function ipLP(PS::Problem{T}; settings=SettingsQP(PS)) where {T}
+#= function ipLP(PS::Problem{T}; settings=SettingsQP(PS)) where {T}
     #mu for HVEP (Highest Variance Efficient Portfolio)
     (; E, u, d, G, g, A, b, N, M, J) = PS
     iu = findall(u .< Inf)
@@ -549,13 +553,13 @@ function ipLP(PS::Problem{T}; settings=SettingsQP(PS)) where {T}
     L = J + N + length(iu)
     Q = OOQP{T}(zeros(T, N, N), A, C, -E, b, gq, N, M, L)
     solveOOQP(Q; settings=settings)
-end
+end =#
 
 function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsQP(PS), settingsLP=SettingsLP(PS)) where {T}
     #(; u, N, J) = PS
     #(; muShft, tolS, rule) = nS
 
-    (S, iH, q, f) = SimplexLP(PS; settings=settingsLP)
+    (S, iH, q, f) = SimplexLP(PS; settings=settingsLP)  #HMFP (Highest Mean Frontier Portfolio), or HVEP (Highest Variance Efficient Portfolio), 99.9% hit
     if computeCL!(aCL, S, PS, nS)
         return true
     end
@@ -563,8 +567,9 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
 
     #return SimplexQP!(mu, aCL, PS; nS=nS)
     #Q = OOQP(PS; mu=mu)    #EF @ mu
-    Q = OOQP(PS)    # @L=0
-    x, status = solveOOQP(Q; settings=settings)    #may fail, leave it to computeCL!
+    #Q = OOQP(PS)    # @L=0
+    #x, status = solveOOQP(Q; settings=settings)    #may fail, leave it to computeCL!
+    x, status = fPortfolio(PS; settings=settings)   #GMVP, LVEP (Lowest Variance Efficient Portfolio)
     S = getS(x.s, PS, nS.tolS)
     computeCL!(aCL, S, PS, nS)
 

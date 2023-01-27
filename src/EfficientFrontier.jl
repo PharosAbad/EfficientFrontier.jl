@@ -7,8 +7,8 @@ export computeCL!, ECL!, cbCL!, eFrontier, ePortfolio
 using LinearAlgebra, Combinatorics
 
 using LightenQP: LightenQP, solveOOQP
-import LightenQP: OOQP, Settings as SettingsQP
-export OOQP, SettingsQP, solveOOQP #, Solution   #from LightenQP
+import LightenQP: OOQP, Settings as SettingsQP, fPortfolio
+export OOQP, SettingsQP, solveOOQP, fPortfolio #, Solution   #from LightenQP
 
 include("./types.jl")
 

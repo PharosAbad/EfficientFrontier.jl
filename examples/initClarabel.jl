@@ -47,7 +47,8 @@ if length(filter((x) -> x == :Markowitz, names(Main, imported=true))) == 0
     using .Markowitz
 end
 
-u = 3/32*ones(length(E))
+#u = 3/32*ones(length(E))
+u = fill(3 / 32, length(E))
 
 m = markowitz(E, V; upper=u)
 unit_sum(m) # total weight = 100%
@@ -68,7 +69,8 @@ if length(filter((x) -> x == :uClarabel, names(Main, imported=true))) == 0
 end
 println("\n--- Status-Segment Method: init by `Clarabel.jl`   ---\n")
 
-ts = @elapsed aCLu = EfficientFrontier.ECL(Pu; init=ClarabelCL!)   #using numerical solver
+settings = uClarabel.SettingsCl(Pu; verbose=false)
+ts = @elapsed aCLu = EfficientFrontier.ECL(Pu; init=ClarabelCL!, settings=settings)   #using numerical solver
 aEFu = eFrontier(aCLu, Pu)
 println("Status-Segment Method:  ", ts, "  seconds")    #0.303391205  seconds
 

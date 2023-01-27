@@ -88,6 +88,7 @@ end
 
 
 
+
 """
 
         z = ePortfolio(aEF::sEF, mu)
@@ -115,6 +116,8 @@ function ePortfolio(aEF::sEF, mu::Float64)
 end
 
 
+
+
 """
 
         z = ePortfolio(P::Problem, mu)
@@ -125,15 +128,39 @@ If mu is a vector, z is a matrix, its row k is the portfolio weights for mu[k]
 """
 function ePortfolio(P::Problem, mu::Float64)
     aEF = eFrontier(ECL(P), P)
-    return ePortfolio(mu, aEF)
+    return ePortfolio(aEF, mu)
 end
 
-function ePortfolio(mu::Vector{Float64}, P::Problem)
+function ePortfolio(P::Problem, mu::Vector{Float64})
     aEF = eFrontier(ECL(P), P)
-    J = length(mu)
-    Z = similar(mu, J, P.N)
-    for k in 1:J
-        Z[k,:] = ePortfolio(mu[k], aEF)
+    M = length(mu)
+    Z = similar(mu, M, P.N)
+    for k in 1:M
+        Z[k,:] = ePortfolio(aEF, mu[k])
     end
     return Z
 end
+
+
+
+
+"""
+
+        x, status = fPortfolio(P::Problem; settings, L=0)
+        x, status = fPortfolio(P::Problem, mu; settings, check=true)
+
+compute frontier portfolio at given mu, using LightenQP's numerical solver `fPortfolio`
+
+"""
+function fPortfolio(P::Problem{T}; settings=SettingsQP{T}(), L=0.0) where {T}
+    Q = OOQP(P)
+    fPortfolio(Q; settings=settings, L=L)
+end
+
+
+function fPortfolio(P::Problem{T}, mu::T; settings=SettingsQP{T}(), check=true) where {T}
+    Q = OOQP(P)
+    fPortfolio(Q, mu; settings=settings, check=check)
+end
+
+
