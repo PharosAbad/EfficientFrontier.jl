@@ -9,9 +9,9 @@ LightenQP = "732b1220-b3b1-47df-92b9-9aafce73c71b"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [compat]
-Combinatorics = ">= 1"
-LightenQP = ">= 1.0.2"
-julia = ">= 1.8"
+Combinatorics = "1 - 2"
+LightenQP = "1.0.2 - 3"
+julia = "1.8 - 2"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
