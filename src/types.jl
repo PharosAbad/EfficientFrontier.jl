@@ -306,6 +306,16 @@ function OOQP(P::Problem{T}; mu::T=-Inf) where {T}
 end
 =#
 
+
+"""
+
+        OOQP(P::Problem)
+
+Pack `P::Problem` into OOQP object
+
+See also  [`LightenQP.OOQP`](@ref)
+
+"""
 function OOQP(P::Problem{T}) where {T}
     #Pack P into OOQP
     (; E, V, u, d, G, g, A, b, N, M, J) = P
@@ -316,8 +326,32 @@ function OOQP(P::Problem{T}) where {T}
     OOQP{T}(V, A, C, E, b, gq, N, M, L)
 end
 
+
+"""
+
+    SettingsQP(P::Problem; kwargs...)
+
+Settings for `LightenQP`'s numerical solver Settings
+
+See also  [`LightenQP.Settings`](@ref)
+
+"""
 function SettingsQP(P::Problem{T}; kwargs...) where {T}
-    #LightenQP.Settings{T}(;kwargs...)
-    SettingsQP{T}(; kwargs...)
+    LightenQP.Settings{T}(;kwargs...)
+    #SettingsQP{T}(; kwargs...)
 end
 
+
+"""
+
+    SettingsLP(P::Problem; kwargs...)
+
+Settings for `SimplexLP`'s numerical solver Settings
+
+See also  [`EfficientFrontier.Simplex.Settings`](@ref)
+
+"""
+function SettingsLP(P::Problem{T}; kwargs...) where {T}
+    #Settings{typeof(P).parameters[1]}(; kwargs...)
+    Simplex.Settings{T}(; kwargs...)
+end

@@ -1,7 +1,7 @@
 
 """
 
-        aEF = eFrontier(aCL::Vector{sCL{T}}, PS::Problem{T}; tolNorm = 2^-26) where T
+        aEF = eFrontier(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where T
 
 compute the Full Efficient Frontier by Status-Segment Method
 
@@ -15,13 +15,14 @@ the return aEF has the follwing structure
             ic::Vector{Int64}       #id of related critical line
         end
 
+See also [`EfficientFrontier.ECL`](@ref), [`ePortfolio`](@ref), [`Problem`](@ref), [`Settings`](@ref)
 """
-function eFrontier(aCL::Vector{sCL{T}}, PS::Problem{T}; tolNorm=2^-26) where {T}
+function eFrontier(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {T}
     (; E, V, u, d, N, eE, eV) = PS
     nL = lastindex(aCL)
     W = trues(nL)
     for k in eachindex(aCL)
-        if norm(aCL[k].beta) < tolNorm
+        if norm(aCL[k].beta) < nS.tolNorm
             W[k] = false
         end
     end
@@ -92,8 +93,14 @@ end
 """
 
         z = ePortfolio(aEF::sEF, mu)
+        z = ePortfolio(P::Problem, mu; nS=Settings(P))
 
-compute the efficient portfolio given mu, returns portfolio weights z (Nx1 vector of NaN if mu is out of range)
+`ePortfolio(aEF::sEF, mu)` compute the efficient portfolio given mu when Efficient Frontier is known, returns portfolio weights z (Nx1 vector of NaN if mu is out of range)
+
+`ePortfolio(P::Problem, mu; nS=Settings(P))` compute the efficient portfolio for `P` given mu, returns portfolio weights z (Nx1 vector of NaN if mu is out of range)
+If mu is a vector, z is a matrix, its row k is the portfolio weights for mu[k]. Here you can not set `init::Function`
+
+See also [`EfficientFrontier.ECL`](@ref), [`eFrontier`](@ref), [`Problem`](@ref), [`Settings`](@ref)
 
 """
 function ePortfolio(aEF::sEF, mu::Float64)
@@ -116,23 +123,13 @@ function ePortfolio(aEF::sEF, mu::Float64)
 end
 
 
-
-
-"""
-
-        z = ePortfolio(P::Problem, mu)
-
-compute the efficient portfolio given mu, returns portfolio weights z (Nx1 vector of NaN if mu is out of range)
-If mu is a vector, z is a matrix, its row k is the portfolio weights for mu[k]
-
-"""
-function ePortfolio(P::Problem, mu::Float64)
-    aEF = eFrontier(ECL(P), P)
+function ePortfolio(P::Problem, mu::Float64; nS=Settings(P))
+    aEF = eFrontier(ECL(P; numSettings=nS), P; nS=nS)
     return ePortfolio(aEF, mu)
 end
 
-function ePortfolio(P::Problem, mu::Vector{Float64})
-    aEF = eFrontier(ECL(P), P)
+function ePortfolio(P::Problem, mu::Vector{Float64}; nS=Settings(P))
+    aEF = eFrontier(ECL(P; numSettings=nS), P; nS=nS)
     M = length(mu)
     Z = similar(mu, M, P.N)
     for k in 1:M
@@ -146,21 +143,34 @@ end
 
 """
 
-        x, status = fPortfolio(P::Problem; settings, L=0)
-        x, status = fPortfolio(P::Problem, mu; settings, check=true)
+        x, status = fPortfolio(P::Problem; settings=SettingsQP, L=0)
+        x, status = fPortfolio(P::Problem, mu; settings=SettingsQP, check=true)
 
-compute frontier portfolio at given mu, using LightenQP's numerical solver `fPortfolio`
+compute frontier portfolio at given L or mu, using `LightenQP`'s numerical solver `fPortfolio`
+
+    L=-Inf          :FP(L=-Inf), LMFP (Lowest Mean Frontier Portfolio)
+    L=+Inf          :FP(L=+Inf), HMFP (Highest Mean Frontier Portfolio) HVEP (Highest Variance Efficient Portfolio)
+    L=L0            :FP(L=L0), the frontier (minimum variance) portfolio at L=L0. L=0, LVEP (Lowest Variance Efficient Portfolio, also called GMVP, Global Minimum Variance Portfolio)
+    mu=-Inf         :FP(L=-Inf), LMFP (Lowest Mean Frontier Portfolio)
+    mu=+Inf         :FP(L=+Inf), HMFP (Highest Mean Frontier Portfolio) == HVEP (Highest Variance Efficient Portfolio)
+    mu=mu0          :FP(mu=mu0), the frontier (minimum variance) portfolio at mu=mu0
+
+if `check=false`, we do not check if mu is feasible or not (between lowest and highest mean)
+
+See also [`ePortfolio`](@ref), [`Problem`](@ref), [`SettingsQP`](@ref), [`LightenQP.fPortfolio`](@ref)
 
 """
-function fPortfolio(P::Problem{T}; settings=SettingsQP{T}(), L=0.0) where {T}
+function fPortfolio(P::Problem{T}; settings=SettingsQP(P), L=0.0) where {T}
     Q = OOQP(P)
     fPortfolio(Q; settings=settings, L=L)
 end
 
 
-function fPortfolio(P::Problem{T}, mu::T; settings=SettingsQP{T}(), check=true) where {T}
+function fPortfolio(P::Problem{T}, mu::T; settings=SettingsQP(P), check=true) where {T}
     Q = OOQP(P)
     fPortfolio(Q, mu; settings=settings, check=check)
 end
+
+
 
 

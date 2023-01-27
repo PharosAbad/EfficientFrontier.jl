@@ -1,4 +1,4 @@
-"Simplex algorithm"
+"Simplex algorithm for EfficientFrontier"
 module Simplex
 using LinearAlgebra, Combinatorics
 using EfficientFrontier: EfficientFrontier, Problem, Status, Event, sCL, IN, DN, UP, OE, EO, computeCL!
@@ -348,6 +348,16 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
     return q, B, invB, iH, c' * x
 end
 
+
+
+"""
+
+        SimplexLP(PS::Problem; settings=Simplex.Settings(PS))
+
+find the `Status` for assets by simplex method
+
+See also [`Status`](@ref), [`Problem`](@ref), [`EfficientFrontier.Simplex.Settings`](@ref), [`EfficientFrontier.Simplex.cDantzigLP`](@ref), [`EfficientFrontier.Simplex.maxImprvLP`](@ref)
+"""
 function SimplexLP(PS::Problem{T}; settings=Settings(PS)) where {T}
 #function SimplexLP(PS::Problem{T}, tol=sqrt(eps(T)); rule=:Dantzig) where {T}
     (; E, u, d, G, g, A, b, N, M, J) = PS
@@ -569,6 +579,7 @@ end
 
 compute the Critical Line Segments by Simplex method, for the highest expected return. Save the CL to aCL if done
 
+Since `SimplexQP!` may fail, we give it up. Now using `EfficientFrontier.SimplexCL!` where `LightenQP`'s  QP solver is employed.
 
 """
 function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=SettingsEF(PS), settingsLP=Settings(PS), kwargs...) where {T}

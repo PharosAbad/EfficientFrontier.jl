@@ -1,5 +1,17 @@
 #some data sets for test
 
+"""
+
+        EVdata(ds::Symbol, verbose=true)
+
+extract some data sets
+
+    :Abad           Abad's equilibrum data
+    :Markowitz      Markowitz and Todd (2000), chapter 13, pp.337
+    :Ungil          from https://github.com/ungil/Markowitz.jl/blob/master/examples/frontier.jl
+
+
+"""
 function EVdata(ds::Symbol, verbose=true)
     if ds == :Abad
         V = [1/100 1/80 1/100

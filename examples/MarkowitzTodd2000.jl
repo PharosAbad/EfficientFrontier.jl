@@ -40,7 +40,7 @@ display(f.weights)
 
 P = Problem(E, V, u, d, G, g)
 ts = @elapsed aCL = EfficientFrontier.ECL(P)
-#EfficientFrontier.ECL(P, init=cbCL!)
+#EfficientFrontier.ECL(P; init=cbCL!)
 aEF = eFrontier(aCL, P)
 println("Status-Segment Method:  ", ts, "  seconds")   #0.0004 seconds
 display(aEF.Z)
