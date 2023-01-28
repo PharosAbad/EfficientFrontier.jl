@@ -79,7 +79,7 @@ println("\n--- Status-Segment Method: init by default `SimplexCL!`  ---\n")
 ts = @elapsed aCL = EfficientFrontier.ECL(Pu)   #v1.0   using Simplex solver
 aEF = eFrontier(aCL, Pu)
 println("Status-Segment Method:  ", ts, "  seconds")    #0.061639485  seconds
-
+aCLu[7].S == aCL[7].S
 
 #=
 using LinearAlgebra

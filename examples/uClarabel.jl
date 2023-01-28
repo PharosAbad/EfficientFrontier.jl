@@ -1,4 +1,4 @@
-"using Clarabel to do LP and QP"
+"using Clarabel (an interior point numerical solver) to do LP and QP"
 module uClarabel
 # promising, but too BIG, if the dep Pardiso can be removed, it will be perfect
 
@@ -7,10 +7,21 @@ export ClarabelQP, ClarabelLP
 export ClarabelCL!
 
 function SettingsCl(PS::Problem{T}; kwargs...) where {T}
+    if isempty(kwargs)  #default setting
+        return Clarabel.Settings{T}(tol_gap_abs=2^-52, tol_gap_rel=2^-47, verbose = false)
+    end
     Clarabel.Settings{T}(; kwargs...)
 end
 
-function ClarabelQP(PS::Problem{T}, mu::T; settings= SettingsCl(PS; verbose = false)) where {T}
+function SettingsCl(; kwargs...)
+    if isempty(kwargs)  #default setting
+        return Clarabel.Settings(tol_gap_abs=2^-52, tol_gap_rel=2^-47, verbose = false)
+    end    
+    Clarabel.Settings(; kwargs...)
+end
+
+function ClarabelQP(PS::Problem{T}, mu::T; settings= SettingsCl()) where {T}
+#function ClarabelQP(PS::Problem{T}, mu::T; settings= SettingsCl(PS; verbose = false)) where {T}
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
     iu = findall(u .< Inf)
     P = sparse(V)
@@ -25,7 +36,8 @@ end
 
 
 # LVEP (Lowest Variance Efficient Portfolio) == Global Minimum Variance Portfolio (GMVP)
-function ClarabelQP(PS::Problem{T}; settings= SettingsCl(PS; verbose = false)) where {T}
+function ClarabelQP(PS::Problem{T}; settings= SettingsCl()) where {T}
+#function ClarabelQP(PS::Problem{T}; settings= SettingsCl(PS; verbose = false)) where {T}
     (; V, u, d, G, g, A, b, N, M, J) = PS
     iu = findall(u .< Inf)
     P = sparse(V)
@@ -40,10 +52,11 @@ end
 
 
 #find the highest mean: -x.obj_val
-function ClarabelLP(PS::Problem{T}; settings= SettingsCl(PS; verbose = false)) where {T}
+function ClarabelLP(PS::Problem{T}; settings= SettingsCl()) where {T}
+#function ClarabelLP(PS::Problem{T}; settings= SettingsCl(PS; verbose = false)) where {T}
     (; E, u, d, G, g, A, b, N, M, J) = PS
     iu = findall(u .< Inf)
-    P = sparse(zeros(T, N, N))
+    P = spzeros(T, N, N)
     q = -E
     Ac = sparse([A; G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]])
     bc = [b; g; -d; u[iu]]
@@ -62,7 +75,8 @@ compute the Critical Line Segments by Clarabel.jl (Interior Point QP), for the h
 
 
 """
-function ClarabelCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsCl(PS; verbose = false), kwargs...) where {T}
+function ClarabelCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsCl(), kwargs...) where {T}
+#function ClarabelCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsCl(PS; verbose = false), kwargs...) where {T}
     
     x = ClarabelLP(PS; settings=settings)
     if Int(x.status) != 1   #SOLVED

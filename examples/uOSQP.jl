@@ -1,4 +1,4 @@
-"using OSQP to do LP and QP"
+"using OSQP (Operator Splitting Quadratic Program) numerical solver to do LP and QP"
 module uOSQP
 
 using LinearAlgebra, OSQP, SparseArrays, EfficientFrontier
@@ -37,7 +37,7 @@ end
 function OpSpLP(PS::Problem{T}; settings=SettingsOS()) where {T}
 #function OpSpLP(E::Vector{T}, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, A::Matrix{T}, b::Vector{T}) where {T}
     (; E, u, d, G, g, A, b, N, J) = PS
-    P = sparse(zeros(T, N, N))
+    P = spzeros(T, N, N)
     q = -E
     Ao = sparse([A; G; Matrix{T}(I, N, N)])
     uo = [b; g; u]
@@ -66,11 +66,13 @@ function OpSpCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=
     (; u, d, G, g, N, J) = PS
     (; tolS, muShft) = nS
 
-    x = OpSpLP(PS; settings=settings)
+    # using OSQP for LP is a disaster
+    #= x = OpSpLP(PS; settings=settings)
 
     if x.info.status_val != 1
         error("Not able to find the expected return of HMFP (Highest Mean Frontier Portfolio)")
-    end
+    end =#
+
     #= mu = -x.info.obj_val
     shft =  muShft
     if  mu < -1 || mu > 1
@@ -78,10 +80,14 @@ function OpSpCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=
     end
     mu -= shft
     #y = OpSpQP(E, V, mu, u, d, G, g, A, b)
-    y = OpSpQP(PS, mu; settings=settings) =#
-    y = OpSpQP(PS; settings=settings)   #LVEP has a better numerical results
+    y = OpSpQP(PS, mu; settings=settings)
     if y.info.status_val != 1   #SOLVED
         error("Not able to find a muShft to the HMFP (Highest Mean Frontier Portfolio)")
+    end =#
+
+    y = OpSpQP(PS; settings=settings)   #LVEP has a better numerical results
+    if y.info.status_val != 1   #SOLVED
+        error("Not able to find the LVEP (Lowest Variance Efficient Portfolio)")
     end
 
     Y = y.x
