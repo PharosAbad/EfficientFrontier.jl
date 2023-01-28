@@ -592,7 +592,17 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=SettingsEF(PS), sett
         return true
     end
     #display("------- SimplexQP!  -------")
-    mu = f * (nS.muShft - 1)
+    #mu = f * (nS.muShft - 1)    #assume Highest Mean > 0
+    mu = -f
+    #sgn = (mu >= 0 ? -1 : 1)
+    shft =  nS.muShft
+    if  mu < -1 || mu > 1
+        #sgn *= mu
+        shft *= abs(mu)
+    end
+    #mu += sgn * nS.muShft
+    mu -= shft
+
     return SimplexQP!(mu, aCL, PS; nS=nS, settings=settingsLP)
 end
 

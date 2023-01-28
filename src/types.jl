@@ -174,13 +174,25 @@ function Problem(E, V;
     #norm(A[1,:] .- b[1]) == 0 || error("First equality constraint must be 1'z = 1")
     sum(abs.(A[1, :] .- b[1])) == 0 || error("First equality constraint must be 1'z = 1")
 
-    d[isinf.(d)] .= -1.0    #replace -Inf in lower bound by -1.0
+    #d[isinf.(d)] .= -1.0    #replace -Inf in lower bound by -1.0
+    id = findall(isinf.(d))
+    if length(id) > 0
+        @warn "reset +/-Inf downside bounds to -1"
+        d[id] .= -1.0
+    end
+
     iu = u .< d
-    u[iu] .= d[iu]   #make sure u >= d
+    #u[iu] .= d[iu]   #make sure u >= d
+    if sum(iu) > 0
+        @warn "reset the elements where u < d  to u = d, to make sure u >= d"
+        u[iu] .= d[iu]
+    end
     iu = u .< 0
-    u[iu] .= 0  #make sure u >= 0
-
-
+    #u[iu] .= 0  #make sure u >= 0
+    if sum(iu) > 0
+        @warn "reset the elements where u < 0  to u = 0, to make sure u >= 0"
+        u[iu] .= 0.0
+    end
 
     @assert sum(d) < 1 "the sum of downside/lower bound is greater than 1"
     @assert sum(u) > 1 "the sum of upside/higher bound is less than 1"
@@ -284,29 +296,6 @@ struct sEF    #Efficient Frontier       Float64 is OK
 end
 
 
-#=
-function OOQP(P::Problem{T}; mu::T=-Inf) where {T}
-    #mu=-Inf => L = 0, the Global Minimum Variance Portfolio
-    (; E, V, u, d, G, g, A, b, N, M, J) = P
-    Aq = A
-    bq = b
-    iu = findall(u .< Inf)
-    C = [G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]]
-    gq = [g; -d; u[iu]]
-    Lq = J + N + length(iu)
-    q = zeros(T, N)
-    if mu == Inf  #EfficientFrontier @ L=1
-        q = -E
-    elseif mu != -Inf   #given mu
-        Aq = [A; E']
-        bq = [b; mu]
-        M += 1
-    end
-    OOQP{T}(V, Aq, C, q, bq, gq, N, M, Lq)
-end
-=#
-
-
 """
 
         OOQP(P::Problem)
@@ -337,7 +326,7 @@ See also  [`LightenQP.Settings`](@ref)
 
 """
 function SettingsQP(P::Problem{T}; kwargs...) where {T}
-    LightenQP.Settings{T}(;kwargs...)
+    LightenQP.Settings{T}(; kwargs...)
     #SettingsQP{T}(; kwargs...)
 end
 

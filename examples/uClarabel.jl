@@ -24,7 +24,7 @@ function ClarabelQP(PS::Problem{T}, mu::T; settings= SettingsCl(PS; verbose = fa
 end
 
 
-# Global Minimum Variance Portfolio (GMVP)
+# LVEP (Lowest Variance Efficient Portfolio) == Global Minimum Variance Portfolio (GMVP)
 function ClarabelQP(PS::Problem{T}; settings= SettingsCl(PS; verbose = false)) where {T}
     (; V, u, d, G, g, A, b, N, M, J) = PS
     iu = findall(u .< Inf)
@@ -63,17 +63,37 @@ compute the Critical Line Segments by Clarabel.jl (Interior Point QP), for the h
 
 """
 function ClarabelCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsCl(PS; verbose = false), kwargs...) where {T}
+    
     x = ClarabelLP(PS; settings=settings)
     if Int(x.status) != 1   #SOLVED
         error("Not able to find the expected return of HMFP (Highest Mean Frontier Portfolio)")
     end
-    y = ClarabelQP(PS, x.obj_val * (nS.muShft - 1); settings=settings)
+    mu = -x.obj_val
+    shft =  nS.muShft
+    if  mu < -1 || mu > 1
+        shft *= abs(mu)
+    end
+    mu -= shft
+    #y = ClarabelQP(PS, x.obj_val * (nS.muShft - 1); settings=settings)
+    y = ClarabelQP(PS, mu; settings=settings)
     if Int(y.status) != 1   #SOLVED
         error("Not able to find a muShft to the HMFP (Highest Mean Frontier Portfolio)")
     end
 
     Y = y.s[PS.M+2:end]
-    S = EfficientFrontier.getS(Y, PS, nS.tolS)
+    S = EfficientFrontier.getS(Y, PS, nS.tolS) 
+    
+
+    #=
+    # GMVP, fail to get correct S most of time. See https://github.com/oxfordcontrol/Clarabel.jl/issues/109 Corner Portfolio Blur 
+    y = ClarabelQP(PS; settings=settings)   #may fail, leave it to computeCL!
+    #= if Int(y.status) != 1   #SOLVED
+        error("Clarabel: Not able to find the Lowest Variance Efficient Portfolio")
+    end =#
+    Y = y.s[PS.M+1:end]
+    S = EfficientFrontier.getS(Y, PS, nS.tolS*128)  =#
+
+
     computeCL!(aCL, S, PS, nS)
 end
 

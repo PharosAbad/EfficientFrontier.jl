@@ -419,7 +419,13 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
                 end
                 sgn = -sgn    #going up
             end
-            mu = (mu == 0) ? sgn * muShft : mu * (muShft * sgn + 1)
+            #mu = (mu == 0) ? sgn * muShft : mu * (muShft * sgn + 1)
+            #mu = (abs(mu) < muShft) ? sgn * muShft : ((abs(mu) < 1) ? mu + muShft * sgn  : mu * (muShft * sgn + 1)) 
+            #mu = (-1 <= mu <= 1) ? mu + sgn * muShft : mu * (muShft * sgn + 1)            
+            if  mu < -1 || mu > 1
+                sgn *= mu
+            end
+            mu += sgn * muShft
             xm, status = fPortfolio(PS, mu; settings=settings, check=false) #FP(mu=mu)
             S = getS(xm.s, PS, tolS)
         end
