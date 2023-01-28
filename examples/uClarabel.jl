@@ -39,7 +39,7 @@ function ClarabelQP(PS::Problem{T}; settings= SettingsCl(PS; verbose = false)) w
 end
 
 
-#find the highest mean
+#find the highest mean: -x.obj_val
 function ClarabelLP(PS::Problem{T}; settings= SettingsCl(PS; verbose = false)) where {T}
     (; E, u, d, G, g, A, b, N, M, J) = PS
     iu = findall(u .< Inf)
