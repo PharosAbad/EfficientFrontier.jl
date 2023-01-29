@@ -66,7 +66,7 @@ function OpSpCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=
     (; u, d, G, g, N, J) = PS
     (; tolS, muShft) = nS
 
-    # using OSQP for LP is a disaster
+    # using OSQP for HMFP and muShft are a disaster, LP or QP
     #= x = OpSpLP(PS; settings=settings)
 
     if x.info.status_val != 1

@@ -4,7 +4,7 @@
 using EfficientFrontier
 println("\n--- Status-Segment Method vs Markowitz's CLA  ---\n")
 
-using LinearAlgebra, CodecXz, Serialization, Downloads
+using LinearAlgebra, CodecXz, Serialization, Downloads, TranscodingStreams
 #=
 #------------ rda <<<
 using RData
@@ -25,10 +25,10 @@ V = (V+V')/2    #make sure symetry
 =#
 
 #---------- jls.xz <<<
-using TranscodingStreams
-
-xzFile = Downloads.download("https://github.com/PharosAbad/PharosAbad.github.io/raw/master/files/sp500.jls.xz")
-
+xzFile = "/tmp/sp500.jls.xz"
+if !isfile(xzFile)
+    Downloads.download("https://github.com/PharosAbad/PharosAbad.github.io/raw/master/files/sp500.jls.xz", xzFile)
+end
 io = open(xzFile)
 io = TranscodingStream(XzDecompressor(), io)
 E = deserialize(io)
