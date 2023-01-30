@@ -19,6 +19,7 @@ function SettingsOS(; kwargs...)
 end
 
 
+#=
 # LVEP (Lowest Variance Efficient Portfolio) == Global Minimum Variance Portfolio (GMVP)
 function OpSpQP(PS::Problem{T}; settings=SettingsOS()) where {T}
     #function OpSpQP(PS::Problem{T}; settings=OSQP.Settings()) where {T}
@@ -32,6 +33,32 @@ function OpSpQP(PS::Problem{T}; settings=SettingsOS()) where {T}
     OSQP.setup!(model; P=P, q=q, A=Ao, l=lo, u=uo, settings...) # `settings...` to iterate pairs in `settings`
     OSQP.solve!(model)
 end
+=#
+
+function OpSpQP(PS::Problem{T}; settings=SettingsOS(), L::T=0.0) where {T}
+    #function OpSpQP(PS::Problem{T}; settings=OSQP.Settings()) where {T}
+    (; E, V, u, d, G, g, A, b, N, J) = PS
+    P = sparse(V)
+    #q = zeros(T, N)
+    Ao = sparse([A; G; Matrix{T}(I, N, N)])
+    uo = [b; g; u]
+    lo = [b; fill(-Inf, J); d]
+    model = OSQP.Model()
+    #OSQP.setup!(model; P=P, q=q, A=Ao, l=lo, u=uo, settings...) # `settings...` to iterate pairs in `settings`
+    #OSQP.solve!(model)
+    if L == 0
+        OSQP.setup!(model; P=P, q=zeros(T, N), A=Ao, l=lo, u=uo, settings...) # `settings...` to iterate pairs in `settings`
+        return OSQP.solve!(model)
+    end
+    if isfinite(L)
+        OSQP.setup!(model; P=P, q=-L * E, A=Ao, l=lo, u=uo, settings...) # `settings...` to iterate pairs in `settings`
+        return OSQP.solve!(model)
+    end
+    sgn = L == Inf ? -1 : 1
+    OSQP.setup!(model; P=P, q=sgn * E, A=Ao, l=lo, u=uo, settings...) # `settings...` to iterate pairs in `settings`
+    return OSQP.solve!(model)    
+end
+
 
 #find the highest mean: -x.info.obj_val
 function OpSpLP(PS::Problem{T}; settings=SettingsOS()) where {T}

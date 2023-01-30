@@ -9,6 +9,7 @@ extract some data sets
     :Abad           Abad's equilibrum data
     :Markowitz      Markowitz and Todd (2000), chapter 13, pp.337
     :Ungil          from https://github.com/ungil/Markowitz.jl/blob/master/examples/frontier.jl
+    :SP500          Hints to download the SP500 data set
 
 
 """

@@ -187,7 +187,8 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
     ih = abs.(h) .< tol   # h==0
     iH = findall(F)[ih]
     x[B] = q
-    return q, B, invB, iH, c' * x
+    #return q, B, invB, iH, c' * x
+    return c' * x, x, q, B, invB, iH 
 end
 
 
@@ -345,7 +346,8 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
     ih = abs.(h) .< tol   # h==0
     iH = findall(F)[ih]
     x[B] = q
-    return q, B, invB, iH, c' * x
+    #return q, B, invB, iH, c' * x
+    return c' * x, x, q, B, invB, iH 
 end
 
 
@@ -363,9 +365,9 @@ function SimplexLP(PS::Problem{T}; settings=Settings(PS)) where {T}
     (; E, u, d, G, g, A, b, N, M, J) = PS
     (; tol, rule) = settings
 
-    Solver = cDantzigLP
+    solveLP = cDantzigLP
     if rule == :maxImprovement
-        Solver = maxImprvLP
+        solveLP = maxImprvLP
     end
 
     Ms = M + J
@@ -396,7 +398,8 @@ function SimplexLP(PS::Problem{T}; settings=Settings(PS)) where {T}
     u1 = [us; fill(Inf, Ms)]
 
     #(q, B, invB, iH) = DantzigBlandLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
-    (q, B, invB, iH, f) = Solver(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+    #(q, B, invB, iH, f) = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+    f, x, q, B, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
     if f > tol
         error("feasible region is empty")
     end
@@ -406,7 +409,8 @@ function SimplexLP(PS::Problem{T}; settings=Settings(PS)) where {T}
     S = S[1:Ns]
 
 
-    (q, B, invB, iH, f) = Solver(-Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
+    #(q, B, invB, iH, f) = solveLP(-Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
+    f, x, q, B, invB, iH = solveLP(-Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
 
     for k in N+1:N+J
         S[k] = S[k] == IN ? OE : EO
