@@ -93,12 +93,18 @@ end
 """
 
         z = ePortfolio(aEF::sEF, mu)
-        z = ePortfolio(P::Problem, mu; nS=Settings(P))
+        z = ePortfolio(P::Problem, mu; nS=Settings(P))                                  #one-step, given mu
+        z = ePortfolio(aCL::Vector{sCL}, P::Problem, L)
+        z = ePortfolio(P::Problem; nS=Settings(P), settings, settingsLP, L::T=0.0)      #one-step, given L
 
-`ePortfolio(aEF::sEF, mu)` compute the efficient portfolio given mu when Efficient Frontier is known, returns portfolio weights z (Nx1 vector of NaN if mu is out of range)
+`ePortfolio(aEF, mu)` compute the efficient portfolio given mu when Efficient Frontier is known, returns portfolio weights z (Nx1 vector of NaN if mu is out of range)
 
-`ePortfolio(P::Problem, mu; nS=Settings(P))` compute the efficient portfolio for `P` given mu, returns portfolio weights z (Nx1 vector of NaN if mu is out of range)
+`ePortfolio(P, mu; nS=Settings(P))` compute the efficient portfolio for `P` given mu, returns portfolio weights z (Nx1 vector of NaN if mu is out of range)
 If mu is a vector, z is a matrix, its row k is the portfolio weights for mu[k]. Here you can not set `init::Function`
+
+`ePortfolio(aCL, P, L)` compute the efficient portfolio for `P` with known Critical Lines `aCL`, given `L`
+
+`ePortfolio(P::Problem; nS=Settings(P), settings, settingsLP, L::T=0.0)` compute the efficient portfolio for `P` given `L`
 
 See also [`EfficientFrontier.ECL`](@ref), [`eFrontier`](@ref), [`Problem`](@ref), [`Settings`](@ref)
 
@@ -122,6 +128,29 @@ function ePortfolio(aEF::sEF, mu::Float64)
     return bt * Z[k, :] + (1 - bt) * Z[k+1, :]
 end
 
+function ePortfolio(aCL::Vector{sCL{T}}, P::Problem{T}, L::T) where {T}
+    (; u, d, N) = P
+    k = 1
+    while aCL[k].L0 > L
+        k += 1
+    end
+    t = aCL[k]
+    S = @view t.S[1:N]
+    z = zeros(N)
+    F = (S .== IN)
+    U = (S .== UP)
+    D = (S .== DN)
+
+    z[D] = d[D]
+    z[U] = u[U]
+    z[F] = t.alpha + t.beta * L
+    return z
+end
+
+function ePortfolio(P::Problem{T}; nS=Settings(P), settings=SettingsQP(PS), settingsLP=SettingsLP(PS), L::T=0.0) where {T}
+    aCL = EfficientFrontier.ECL(P; numSettings=nS, settings=settings, settingsLP=settingsLP)    
+    return ePortfolio(aCL, P, L)
+end
 
 function ePortfolio(P::Problem, mu::Float64; nS=Settings(P))
     aEF = eFrontier(ECL(P; numSettings=nS), P; nS=nS)
@@ -143,10 +172,10 @@ end
 
 """
 
-        x, status = fPortfolio(P::Problem; settings=SettingsQP, L=0)
-        x, status = fPortfolio(P::Problem, mu; settings=SettingsQP, check=true)
+        x         = fPortfolio(P::Problem; settingsLP=settingsLP, L=0)              # active-set numerical solver
+        x, status = fPortfolio(P::Problem, mu; settings=SettingsQP, check=true)     # `LightenQP`'s numerical solver
 
-compute frontier portfolio at given L or mu, using `LightenQP`'s numerical solver `fPortfolio`
+compute frontier portfolio at given `L` or `mu`.
 
     L=-Inf          :FP(L=-Inf), LMFP (Lowest Mean Frontier Portfolio)
     L=+Inf          :FP(L=+Inf), HMFP (Highest Mean Frontier Portfolio) HVEP (Highest Variance Efficient Portfolio)
@@ -160,11 +189,15 @@ if `check=false`, we do not check if mu is feasible or not (between lowest and h
 See also [`ePortfolio`](@ref), [`Problem`](@ref), [`SettingsQP`](@ref), [`LightenQP.fPortfolio`](@ref)
 
 """
+function fPortfolio(P::Problem{T}; settingsLP=SettingsLP(PS), L::T=0.0) where {T}
+    asQP(P; settingsLP=settingsLP, L=L)
+end
+
+#=
 function fPortfolio(P::Problem{T}; settings=SettingsQP(P), L=0.0) where {T}
     Q = OOQP(P)
     fPortfolio(Q; settings=settings, L=L)
-end
-
+end =#
 
 function fPortfolio(P::Problem{T}, mu::T; settings=SettingsQP(P), check=true) where {T}
     Q = OOQP(P)

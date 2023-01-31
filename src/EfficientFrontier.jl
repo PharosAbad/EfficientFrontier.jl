@@ -43,7 +43,8 @@ Base.precompile(Tuple{Core.Typeof(fPortfolio), Problem{Float64}, Float64})
 
 
 #force precompile
-E, V = EVdata(:Abad, false)
+#E, V = EVdata(:Abad, false)
+E, V = EVdata(:Ungil, false)
 P = Problem(E, V)
 aCL = ECL(P)
 aEF = eFrontier(aCL, P)
