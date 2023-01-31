@@ -189,7 +189,7 @@ if `check=false`, we do not check if mu is feasible or not (between lowest and h
 See also [`ePortfolio`](@ref), [`Problem`](@ref), [`SettingsQP`](@ref), [`LightenQP.fPortfolio`](@ref)
 
 """
-function fPortfolio(P::Problem{T}; settingsLP=SettingsLP(PS), L::T=0.0) where {T}
+function fPortfolio(P::Problem{T}; settingsLP=SettingsLP(P), L::T=0.0) where {T}
     asQP(P; settingsLP=settingsLP, L=L)
 end
 

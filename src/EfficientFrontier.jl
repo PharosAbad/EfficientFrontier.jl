@@ -29,7 +29,7 @@ include("./EVdata.jl")
 
 include("./ASQP.jl")
 using .ASQP
-export solveASQP, asQP, asCL!
+export solveASQP, asQP, asCL!, activeS, getSx
 
 #=
 Base.precompile(Tuple{Core.Typeof(ECL), Problem{Float64}})

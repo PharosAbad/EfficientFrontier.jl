@@ -565,12 +565,26 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
     if computeCL!(aCL, S, PS, nS)
         return true
     end
-    x, status = fPortfolio(PS; settings=settings)   #GMVP, LVEP (Lowest Variance Efficient Portfolio),  may fail, leave it to computeCL!
-    S = getS(x.s, PS, nS.tolS)
+
+    x, aS = asQP(PS; settingsLP=settingsLP)   #GMVP
+    S = activeS(aS, PS)
+
     computeCL!(aCL, S, PS, nS)
 end
 
+#using LightenQP
+function LightenCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsQP(PS), settingsLP=SettingsLP(PS)) where {T}
+    S, iH, q, f = SimplexLP(PS; settings=settingsLP)  #HMFP (Highest Mean Frontier Portfolio), or HVEP (Highest Variance Efficient Portfolio), >=99.9% hit
+    if computeCL!(aCL, S, PS, nS)
+        return true
+    end
+    
+    x, status = fPortfolio(PS; settings=settings)   #GMVP, LVEP (Lowest Variance Efficient Portfolio),  may fail, leave it to computeCL!
+    S = getS(x.s, PS, nS.tolS) 
 
+    
+    computeCL!(aCL, S, PS, nS)
+end
 
 function getS(Y, PS, tolS)
     (; u, N, J) = PS

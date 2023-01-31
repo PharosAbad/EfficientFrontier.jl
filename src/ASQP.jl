@@ -2,15 +2,17 @@
 module ASQP
 #https://github.com/oxfordcontrol/GeneralQP.jl
 #to do: 把 Settings 单独出来
+#why no asLP? cause we need a LP to init ASQP
 
 using LinearAlgebra
 using Polynomials
 using EfficientFrontier: EfficientFrontier, Problem, Status, Event, sCL, IN, DN, UP, OE, EO, computeCL!, Settings, SettingsLP
-export solveASQP, asQP, asCL!
+export solveASQP, asQP, asCL!, activeS, getSx
 #export UpdatableQR, NullspaceHessianLDL, NullspaceHessian
 #export addColumn!, removeColumn!
 #export addConstraint!, removeConstraint!
 
+using EfficientFrontier.Simplex: cDantzigLP, maxImprvLP
 
 
 mutable struct UpdatableQR{T} <: Factorization{T}
@@ -310,44 +312,44 @@ end
 
 
 function removeConstraint!(data, idx::Int)
-    constraint_idx = data.working_set[idx]
+    constraint_idx = data.workingSet[idx]
     ignoredConstraintsAddRow!(data, data.A[constraint_idx, :], data.b[constraint_idx])
-    prepend!(data.ignored_set, constraint_idx)
-    deleteat!(data.working_set, idx)
+    prepend!(data.ignoredSet, constraint_idx)
+    deleteat!(data.workingSet, idx)
     removeConstraint!(data.F, idx)
-    updateViews!(data) # Updates A_ignored, b_ignored views
+    updateViews!(data) # Updates ignoredA, bIgnored views
 end
 
 function addConstraint!(data, idx::Int)
-    constraint_idx = data.ignored_set[idx]
+    constraint_idx = data.ignoredSet[idx]
     addConstraint!(data.F, data.A[constraint_idx, :])
     ignoredConstraintsRemoveRow!(data, idx)
-    deleteat!(data.ignored_set, idx)
-    append!(data.working_set, constraint_idx)
+    deleteat!(data.ignoredSet, idx)
+    append!(data.workingSet, constraint_idx)
     updateViews!(data)
 end
 
 function ignoredConstraintsAddRow!(data, a::AbstractVector, b::AbstractFloat)
-    l = length(data.ignored_set)
-    data.A_shuffled[data.m - l, :] = a
-    data.b_shuffled[data.m - l] = b
+    l = length(data.ignoredSet)
+    data.shuffledA[data.m - l, :] = a
+    data.bShuffled[data.m - l] = b
 end
 
 function ignoredConstraintsRemoveRow!(data, idx::Int)
-    l = length(data.ignored_set)
+    l = length(data.ignoredSet)
     start = data.m - l + 1
     @inbounds for j in 1:data.n, i in start+idx-1:-1:start+1
-        data.A_shuffled[i, j] = data.A_shuffled[i - 1, j]
+        data.shuffledA[i, j] = data.shuffledA[i - 1, j]
     end
     @inbounds for i in start+idx-1:-1:start+1
-        data.b_shuffled[i] = data.b_shuffled[i - 1]
+        data.bShuffled[i] = data.bShuffled[i - 1]
     end
 end
 
 function updateViews!(data)
-    range = data.m-length(data.ignored_set)+1:data.m
-    data.A_ignored = view(data.A_shuffled, range, :)
-    data.b_ignored = view(data.b_shuffled, range)
+    range = data.m-length(data.ignoredSet)+1:data.m
+    data.ignoredA = view(data.shuffledA, range, :)
+    data.bIgnored = view(data.bShuffled, range)
 end
 
 
@@ -364,7 +366,7 @@ mutable struct Data{T}
     - F.P:       the hessian of the problem
     - F.U & F.D: the ldl factorization of the projected hessian, i.e. F.U'*F.D*F.D = F.Z'*F.P*F.Z
 
-    The Data structure also keeps matrices of the constraints not in the working set (A_ignored and b_ignored)
+    The Data structure also keeps matrices of the constraints not in the working set (ignoredA and bIgnored)
     stored in a continuous manner. This is done to increase use of BLAS.
     """
     x::Vector{T}
@@ -376,58 +378,58 @@ mutable struct Data{T}
     q::Vector{T}
     A::Matrix{T}
     b::Vector{T}
-    working_set::Vector{Int}
-    ignored_set::Vector{Int}
+    workingSet::Vector{Int}
+    ignoredSet::Vector{Int}
     alpha::Vector{T}
     residual::T
 
-    iteration::Int
+    iter::Int
     done::Bool
 
     e::Vector{T} # Just an auxiliary vector used in computing step directions
 
-    A_ignored::SubArray{T, 2, Matrix{T}, Tuple{UnitRange{Int}, Base.Slice{Base.OneTo{Int}}}, false}
-    b_ignored::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int}}, true}
-    A_shuffled::Matrix{T}
-    b_shuffled::Vector{T}
+    ignoredA::SubArray{T, 2, Matrix{T}, Tuple{UnitRange{Int}, Base.Slice{Base.OneTo{Int}}}, false}
+    bIgnored::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int}}, true}
+    shuffledA::Matrix{T}
+    bShuffled::Vector{T}
     tol::T
     #verbosity::Int
     #printing_interval::Int
-    r_min::T
-    r_max::T
+    rMin::T
+    rMax::T
 
     function Data(P::Matrix{T}, q::Vector{T}, A::Matrix{T}, b::Vector{T}, x::Vector{T}; 
-                    r_min::T=zero(T), r_max::T=Inf, tol=1e-9 #=, verbosity=1, printing_interval=50 =#) where T
-        if r_min < tol; r_min = -one(T); end
+                    rMin::T=zero(T), rMax::T=Inf, tol=1e-9 #=, verbosity=1, printing_interval=50 =#) where T
+        if rMin < tol; rMin = -one(T); end
 
         m, n = size(A)
-        working_set = zeros(Int, 0)
+        workingSet = zeros(Int, 0)
         @assert maximum(A*x - b) < tol "The initial point is infeasible!"
-        @assert norm(x) - r_min > -tol "The initial point is infeasible!"
-        @assert norm(x) - r_max < tol "The initial point is infeasible!"
+        @assert norm(x) - rMin > -tol "The initial point is infeasible!"
+        @assert norm(x) - rMax < tol "The initial point is infeasible!"
 
-        ignored_set = setdiff(1:m, working_set)
+        ignoredSet = setdiff(1:m, workingSet)
 
-        F = NullspaceHessianLDL(P, Matrix(view(A, working_set, :)'))
+        F = NullspaceHessianLDL(P, Matrix(view(A, workingSet, :)'))
         if F.m == 0 # To many artificial constraints...
             removeConstraint!(F, 0)
         end
-        A_shuffled = zeros(T, m, n)
-        l = length(ignored_set)
-        A_shuffled[end-l+1:end, :] .= view(A, ignored_set, :)
-        b_shuffled = zeros(T, m)
-        b_shuffled[end-l+1:end] .= view(b, ignored_set)
+        shuffledA = zeros(T, m, n)
+        l = length(ignoredSet)
+        shuffledA[end-l+1:end, :] .= view(A, ignoredSet, :)
+        bShuffled = zeros(T, m)
+        bShuffled[end-l+1:end] .= view(b, ignoredSet)
 
         e = zeros(T, n);
         alpha = zeros(T, m);
 
-        new{T}(x, n, m, F, q, A, b, working_set, ignored_set, alpha,
+        new{T}(x, n, m, F, q, A, b, workingSet, ignoredSet, alpha,
             NaN, 0, false, e,
-            view(A_shuffled, m-l+1:m, :),
-            view(b_shuffled, m-l+1:m),
-            A_shuffled, b_shuffled,
+            view(shuffledA, m-l+1:m, :),
+            view(bShuffled, m-l+1:m),
+            shuffledA, bShuffled,
             #verbosity, printing_interval,
-            tol, r_min, r_max)
+            tol, rMin, rMax)
     end
 end
 
@@ -436,11 +438,12 @@ function solveASQP(P::Matrix{T}, q::Vector{T}, A::Matrix{T}, b::Vector{T},
 
     data = Data(P, q, A, b, x; kwargs...)    
 
-    while !data.done && data.iteration <= maxIter && norm(data.x) <= data.r_max - 1e-10 && norm(data.x) >= data.r_min + 1e-10
+    while !data.done && data.iter <= maxIter && norm(data.x) <= data.rMax - 1e-10 && norm(data.x) >= data.rMin + 1e-10
         iterate!(data)
     end
 
-    return x
+    #return x, data.iter, data.workingSet
+    return x, data.workingSet
 end
 
 function iterate!(data::Data{T}) where{T}
@@ -451,7 +454,7 @@ function iterate!(data::Data{T}) where{T}
         addConstraint!(data, new_constraints[1])
     end
     #ToDo: break next condition into simpler ones or a more representative flag
-    if (isempty(new_constraints) || data.F.m == 0) && norm(data.x) <= data.r_max - 1e-10
+    if (isempty(new_constraints) || data.F.m == 0) && norm(data.x) <= data.rMax - 1e-10
         if data.F.artificial_constraints > 0
             removeConstraint!(data.F, 0)
         else
@@ -459,7 +462,7 @@ function iterate!(data::Data{T}) where{T}
             !data.done && removeConstraint!(data, idx)
         end
     end
-    data.iteration += 1
+    data.iter += 1
 end
 
 function calculateStep(data)
@@ -494,13 +497,13 @@ function calculateStep(data)
         alpha_min = Inf
     end
 
-    A_times_direction = data.A_ignored*direction
-    ratios = abs.(data.b_ignored - data.A_ignored*data.x)./(A_times_direction)
+    A_times_direction = data.ignoredA*direction
+    ratios = abs.(data.bIgnored - data.ignoredA*data.x)./(A_times_direction)
     ratios[A_times_direction .<= 1e-11] .= Inf
 
     alpha_constraint = minimum(ratios)
     idx = findlast(ratios .== alpha_constraint)
-    # @show alpha_constraint, data.ignored_set[idx]
+    # @show alpha_constraint, data.ignoredSet[idx]
 
     alpha = min(alpha_min, alpha_constraint) 
     if alpha == Inf 
@@ -509,11 +512,11 @@ function calculateStep(data)
     end
 
     alpha_max = Inf
-    if isfinite(data.r_max)
-        # Calculate the maximum allowable step alpha_max so that r_min ≤ norm(x) ≤ r_max
-        roots_rmax = roots(Poly([norm(data.x)^2 - data.r_max^2, 2*dot(direction, data.x), norm(direction)^2]))
-        if data.r_min > 0
-            roots_rmin = roots(Poly([norm(data.x)^2 - data.r_min^2, 2*dot(direction, data.x), norm(direction)^2]))
+    if isfinite(data.rMax)
+        # Calculate the maximum allowable step alpha_max so that rMin ≤ norm(x) ≤ rMax
+        roots_rmax = roots(Poly([norm(data.x)^2 - data.rMax^2, 2*dot(direction, data.x), norm(direction)^2]))
+        if data.rMin > 0
+            roots_rmin = roots(Poly([norm(data.x)^2 - data.rMin^2, 2*dot(direction, data.x), norm(direction)^2]))
             roots_all = [roots_rmin; roots_rmax]
         else
             roots_all = roots_rmax
@@ -526,7 +529,7 @@ function calculateStep(data)
         end
     end
     stepsize = min(alpha, alpha_max)
-    @assert isfinite(stepsize) "Set the keyword argument r_max to a finite value if you want to get bounded solutions."
+    @assert isfinite(stepsize) "Set the keyword argument rMax to a finite value if you want to get bounded solutions."
     if alpha_constraint == stepsize
         new_constraints = [idx]
     else
@@ -540,9 +543,9 @@ function KKTcheck!(data)
     grad = data.F.P*data.x + data.q
     alpha = -data.F.QR.R1\data.F.QR.Q1'*grad
     data.alpha .= 0.0
-    data.alpha[data.working_set] .= alpha
+    data.alpha[data.workingSet] .= alpha
     data.residual = norm(data.F.Z'*grad)
-    # data.residual = norm(grad + data.A[data.working_set, :]'*alpha)
+    # data.residual = norm(grad + data.A[data.workingSet, :]'*alpha)
 
     idx = NaN
     if all(alpha .>= -2^-37)
@@ -561,9 +564,11 @@ function asQP(PS::Problem{T}; settingsLP=SettingsLP(PS), L::T=0.0) where {T}
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
     (; tol, rule) = settingsLP
 
-    solveLP = EfficientFrontier.Simplex.cDantzigLP
+    #solveLP = EfficientFrontier.Simplex.cDantzigLP
+    solveLP = cDantzigLP
     if rule == :maxImprovement
-        solveLP = EfficientFrontier.Simplex.maxImprvLP
+        #solveLP = EfficientFrontier.Simplex.maxImprvLP
+        solveLP = maxImprvLP
     end
 
     #An initial feasible point by performing Phase-I Simplex on the polyhedron
@@ -619,9 +624,11 @@ function asQP(PS::Problem{T}, mu::T; settingsLP=SettingsLP(PS)) where {T}
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
     (; tol, rule) = settingsLP
 
-    solveLP = EfficientFrontier.Simplex.cDantzigLP
+    #solveLP = EfficientFrontier.Simplex.cDantzigLP
+    solveLP = cDantzigLP
     if rule == :maxImprovement
-        solveLP = EfficientFrontier.Simplex.maxImprvLP
+        #solveLP = EfficientFrontier.Simplex.maxImprvLP
+        solveLP = maxImprvLP
     end
 
     #An initial feasible point by performing Phase-I Simplex on the polyhedron
@@ -666,7 +673,7 @@ function asQP(PS::Problem{T}, mu::T; settingsLP=SettingsLP(PS)) where {T}
 end
 
 function asCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settingsLP=SettingsLP(PS), kwargs...) where {T}
-    
+    #=
     (; u, d, G, g, N, J) = PS
     (; tolS, muShft) = nS
 
@@ -680,8 +687,54 @@ function asCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settingsLP=
 
     for m = 1:J
         S[N+m] = abs(g[m] - G[m, :]' * Y) < tolS ? EO : OE
-    end
+    end =#
+
+    x, aS = asQP(PS; settingsLP=settingsLP)   #GMVP
+    S = getSx(x, PS, nS)
+    #S = activeS(aS, PS) #if fully degenarated, using x to determine S may be more reliable
+
     computeCL!(aCL, S, PS, nS)
+end
+
+function getSx(x, P, nS)
+    (; u, d, G, g, N, J) = P    
+    tolS = nS.tolS
+
+    S = fill(IN, N + J)
+    Sv = @view S[1:N]
+    Sv[abs.(x - d).<tolS] .= DN
+    Sv[abs.(x - u).<tolS] .= UP
+
+    for m = 1:J
+        S[N+m] = abs(g[m] - G[m, :]' * x) < tolS ? EO : OE
+    end
+    return S
+end
+
+function activeS(aS, P)
+    (; u, M, N, J) = P
+    S = fill(IN, N + J)
+    S[(1:J).+N] .= OE
+    k0 = 2 * M      #equalities
+    kj = k0 + J     #inequalities
+    kd = kj + N     #lower bounds
+    iu = findall(u .< Inf)
+    for k in eachindex(aS)
+        n = aS[k]
+        if n <= kj
+            if J > 0 && n > k0
+                S[N+n-k0] = EO
+            end
+            continue
+        end
+
+        if n <= kd  #z >= d
+            S[n-kj] = DN
+        else    #z <= u
+            S[iu[n-kd]] = UP
+        end
+    end
+    return S
 end
 
 end
