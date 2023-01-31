@@ -434,22 +434,11 @@ end
 function solveASQP(P::Matrix{T}, q::Vector{T}, A::Matrix{T}, b::Vector{T},
     x::Vector{T}; maxIter::Int=77777, kwargs...) where T
 
-    data = Data(P, q, A, b, x; kwargs...)
-
-    #= if data.verbosity > 0
-        print_header(data)
-        print_info(data)
-    end =#
+    data = Data(P, q, A, b, x; kwargs...)    
 
     while !data.done && data.iteration <= maxIter && norm(data.x) <= data.r_max - 1e-10 && norm(data.x) >= data.r_min + 1e-10
         iterate!(data)
-
-        #= if data.verbosity > 0
-            mod(data.iteration, 10*data.printing_interval) == 0 && print_header(data)
-            mod(data.iteration, data.printing_interval) == 0 && print_info(data)
-        end =#
     end
-    # data.verbosity > 0 && print_info(data)
 
     return x
 end
@@ -556,7 +545,8 @@ function KKTcheck!(data)
     # data.residual = norm(grad + data.A[data.working_set, :]'*alpha)
 
     idx = NaN
-    if all(alpha .>= -1e-8)
+    if all(alpha .>= -2^-37)
+    #if all(alpha .>= -1e-8)
         data.done = true
     else
         data.done = false
