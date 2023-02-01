@@ -112,7 +112,7 @@ function OpSpCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=
         error("Not able to find a muShft to the HMFP (Highest Mean Frontier Portfolio)")
     end =#
 
-    y = OpSpQP(PS; settings=settings)   #LVEP has a better numerical results
+    y = OpSpQP(PS; settings=settings)   #relative less Accuracy, but still very good
     if y.info.status_val != 1   #SOLVED
         error("Not able to find the LVEP (Lowest Variance Efficient Portfolio)")
     end

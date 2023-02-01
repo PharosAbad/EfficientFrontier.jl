@@ -183,10 +183,10 @@ end
 compute frontier portfolio at given `L` or `mu`.
 
     L=-Inf          :FP(L=-Inf), LMFP (Lowest Mean Frontier Portfolio)
-    L=+Inf          :FP(L=+Inf), HMFP (Highest Mean Frontier Portfolio) HVEP (Highest Variance Efficient Portfolio)
+    L=+Inf          :FP(L=+Inf), HMFP (Highest Mean Frontier Portfolio) == HVEP (Highest Variance Efficient Portfolio) == HMEP (Highest Mean Efficient Portfolio)
     L=L0            :FP(L=L0), the frontier (minimum variance) portfolio at L=L0. L=0, LVEP (Lowest Variance Efficient Portfolio, also called GMVP, Global Minimum Variance Portfolio)
     mu=-Inf         :FP(L=-Inf), LMFP (Lowest Mean Frontier Portfolio)
-    mu=+Inf         :FP(L=+Inf), HMFP (Highest Mean Frontier Portfolio) == HVEP (Highest Variance Efficient Portfolio)
+    mu=+Inf         :FP(L=+Inf), HMFP (Highest Mean Frontier Portfolio) == HVEP (Highest Variance Efficient Portfolio) == HMEP (Highest Mean Efficient Portfolio)
     mu=mu0          :FP(mu=mu0), the frontier (minimum variance) portfolio at mu=mu0
 
 if `check=false`, we do not check if mu is feasible or not (between lowest and highest mean)
