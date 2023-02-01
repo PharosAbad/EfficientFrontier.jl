@@ -152,7 +152,7 @@ function ePortfolio(aCL::Vector{sCL{T}}, P::Problem{T}, L::T) where {T}
     return z
 end
 
-function ePortfolio(P::Problem{T}; nS=Settings(P), settings=SettingsQP(PS), settingsLP=SettingsLP(PS), L::T=0.0) where {T}
+function ePortfolio(P::Problem{T}; nS=Settings(P), settings=SettingsQP(P), settingsLP=SettingsLP(P), L::T=0.0) where {T}
     aCL = EfficientFrontier.ECL(P; numSettings=nS, settings=settings, settingsLP=settingsLP)
     return ePortfolio(aCL, P, L)
 end
