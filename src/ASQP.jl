@@ -691,7 +691,7 @@ function asCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settingsLP=
     end =#
 
     #x, aS = asQP(PS; settingsLP=settingsLP)   #GMVP    
-    #S = activeS(aS, PS) #if fully degenarated, using x to determine S may be more reliable
+    #S = activeS(aS, PS) #if fully degenerated, using x to determine S may be more reliable
 
     x = asQP(PS; settingsLP=settingsLP)   #GMVP
     S = getSx(x, PS, nS)
@@ -717,7 +717,7 @@ end
 function activeS(aS, P)
     #=
     not reliable, why?
-    * for HMFP, it is a LP, we know there is degenarated case, even fully degenarated. that can belong to many working set
+    * for HMFP, it is a LP, we know there is degenerated case, even fully degenerated. that can belong to many working set
     * for corner portfolios, it is the joit of 2 CL, each has its working set
     =#
     (; u, M, N, J) = P

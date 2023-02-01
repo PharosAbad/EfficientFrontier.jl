@@ -131,7 +131,11 @@ end
 function ePortfolio(aCL::Vector{sCL{T}}, P::Problem{T}, L::T) where {T}
     (; u, d, N) = P
     k = 1
-    L = L < 0 ? 0 : L
+    #L = L < 0 ? 0 : L
+    if L < 0
+        L = 0
+        @warn "L < 0, reset L to zero, L = 0"
+    end
     while aCL[k].L0 > L
         k += 1
     end
@@ -149,7 +153,7 @@ function ePortfolio(aCL::Vector{sCL{T}}, P::Problem{T}, L::T) where {T}
 end
 
 function ePortfolio(P::Problem{T}; nS=Settings(P), settings=SettingsQP(PS), settingsLP=SettingsLP(PS), L::T=0.0) where {T}
-    aCL = EfficientFrontier.ECL(P; numSettings=nS, settings=settings, settingsLP=settingsLP)    
+    aCL = EfficientFrontier.ECL(P; numSettings=nS, settings=settings, settingsLP=settingsLP)
     return ePortfolio(aCL, P, L)
 end
 
@@ -163,7 +167,7 @@ function ePortfolio(P::Problem, mu::Vector{Float64}; nS=Settings(P))
     M = length(mu)
     Z = similar(mu, M, P.N)
     for k in 1:M
-        Z[k,:] = ePortfolio(aEF, mu[k])
+        Z[k, :] = ePortfolio(aEF, mu[k])
     end
     return Z
 end

@@ -1,4 +1,4 @@
-#Example: A non-endpoint corner portfolio is a degenarated portfolio (K=0, weights are on the lower or upper bounds)
+#Example: A non-endpoint corner portfolio is a degenerated portfolio (K=0, weights are on the lower or upper bounds)
 #R: endpoint corner portfolios are: LVEP (Lowest Variance Efficient Portfolio), also called GMVP (Global Minimum Variance Portfolio) 
 # and HVEP (Highest Variance Efficient Portfolio), also called HMFP (Highest Mean Frontier Portfolio) 
 
@@ -7,13 +7,13 @@ E, V = EfficientFrontier.EVdata(:Ungil, false)
 u = [0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.1 0.1 0.1 0.3 0.3 0.3 0.3]
 u = vec(u)
 P = Problem(E, V, u)
-println("\n--- Status-Segment Method: A non-endpoint degenarated corner portfolio`  ---\n")
+println("\n--- Status-Segment Method: A non-endpoint degenerated corner portfolio`  ---\n")
 ts = @elapsed aCL = EfficientFrontier.ECL(P)
 aEF = eFrontier(aCL, P)
 println("Status-Segment Method:  ", ts, "  seconds")    #0.000936215  seconds
 println("\n---  aCL[10:11]  are as follows")
 display(aCL[10:11])
-println("          which shows that from L=", aCL[10].L0, " down to L=", aCL[11].L1, ", we have K=0, a fully degenarated corner portfolio\n")
+println("          which shows that from L=", aCL[10].L0, " down to L=", aCL[11].L1, ", we have K=0, a fully degenerated corner portfolio\n")
 
 println("\n Weigths for the first 9 corner portfolios" )
 display(aEF.Z[1:9,:])

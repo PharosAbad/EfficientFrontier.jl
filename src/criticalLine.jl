@@ -347,7 +347,7 @@ function badK(S, PS, tolNorm)    #infeasible to compute CL
     K = sum(F)
     if K >= size(AE, 1) #good
         return false, K
-    elseif K == 0   #degenarated
+    elseif K == 0   #degenerated
         return true, 0
     else
         return true, -1    #infeasible
@@ -384,7 +384,7 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
                 break
             end
 
-            #degenarated            
+            #degenerated            
             if incL
                 if isinf(f)
                     f = getfield(SimplexLP(PS; settings=settingsLP), 4)
@@ -403,7 +403,7 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
             p = adjoinCL(p, t, S, incL, PS, numSettings, settings, settingsLP, f)
             #= L = (L1 + L0) / 2
             xS = copy(S)
-            while xS == S   #in the region of degenarated
+            while xS == S   #in the region of degenerated
                 x = asQP(PS; settingsLP=settingsLP, L=L)
                 xS = getSx(x, PS, numSettings)
                 K = sum(xS .== IN)
@@ -411,16 +411,16 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
                     break
                 end
                 #now K = 0
-                if xS != S   #hit another degenarated
+                if xS != S   #hit another degenerated
                     xS = copy(S)
                     L1 = incL ? L : L1  #make L close to t
                     L0 = incL ? L0 : L
-                else    #K=0 && xS == S, still in the region of degenarated
+                else    #K=0 && xS == S, still in the region of degenerated
                     L1 = incL ? 2 * L1 : L
                     L0 = incL ? L0 : 0.5 * L0
                 end
                 L = (L1 + L0) / 2
-            end # when exit, xS is not degenarated
+            end # when exit, xS is not degenerated
             xCL = sCL(PS)
             computeCL!(xCL, xS, PS, numSettings)
             ECL!(xCL, PS; numSettings=numSettings, settings=settings, settingsLP=settingsLP, incL=!incL, endCL=false)
@@ -490,7 +490,7 @@ function ECL!0(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), in
             if K != 0   #infeasible
                 break
             end
-            #degenarated
+            #degenerated
             mu = getMu(PS, t, incL)
             sgn = -1.0 * (mu >= 0 ? 1 : -1) #going down
             if incL
@@ -561,7 +561,7 @@ function adjoinCL(p, t, S, incL, PS, nS, settings, settingsLP, f)
     L0 = incL ? t.L1 : p.L1
     L = (L1 + L0) / 2
     xS = copy(S)
-    while xS == S   #in the region of degenarated
+    while xS == S   #in the region of degenerated
         x = asQP(PS; settingsLP=settingsLP, L=L)
         xS = getSx(x, PS, nS)
         K = sum(xS .== IN)
@@ -569,11 +569,11 @@ function adjoinCL(p, t, S, incL, PS, nS, settings, settingsLP, f)
             break
         end
         #now K = 0
-        if xS != S   #hit another degenarated
+        if xS != S   #hit another degenerated
             xS = copy(S)
             L1 = incL ? L : L1  #move in, go L close to t
             L0 = incL ? L0 : L
-        else    #K=0 && xS == S, still in the region of degenarated
+        else    #K=0 && xS == S, still in the region of degenerated
             L1 = incL ? 2 * L1 : L      #move out, go L away from t
             L0 = incL ? L : 0.5 * L0
         end
@@ -700,7 +700,7 @@ end
 compute the Critical Line Segments by Simplex method, for the highest expected return. Save the CL to aCL if done
     
     settingsLP      : `SimplexLP.Settings`, for SimplexLP solver, we always first try the SimplexLP, and a chance of >=99.9% we find the critical line
-                       when the remaining <=0.1%  happens (when the corner portfolio is degenarated, or infinite many solutions to SimplexLP encounted),
+                       when the remaining <=0.1%  happens (when the corner portfolio is degenerated, or infinite many solutions to SimplexLP encounted),
                        we use ASQP, which use LP to obtain an initial point, so no SettingsQP needed
 
 
@@ -730,7 +730,7 @@ end
 
 compute the Critical Line Segments by Simplex method, for the highest expected return. Save the CL to aCL if done
 
-    settings        : for LightenQP solver, chance for a QP solver needed is <=0.1% (when the corner portfolio is degenarated, or infinite many solutions to SimplexLP encounted)
+    settings        : for LightenQP solver, chance for a QP solver needed is <=0.1% (when the corner portfolio is degenerated, or infinite many solutions to SimplexLP encounted)
     settingsLP      : `SimplexLP.Settings`, for SimplexLP solver, we always first try the SimplexLP, and a chance of >=99.9% we find the critical line
 
 See also [`cbCL!`](@ref), [`Problem`](@ref), [`Settings`](@ref), [`SettingsQP`](@ref)
