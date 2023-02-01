@@ -131,6 +131,7 @@ end
 function ePortfolio(aCL::Vector{sCL{T}}, P::Problem{T}, L::T) where {T}
     (; u, d, N) = P
     k = 1
+    L = L < 0 ? 0 : L
     while aCL[k].L0 > L
         k += 1
     end

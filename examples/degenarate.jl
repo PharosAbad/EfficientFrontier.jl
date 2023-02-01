@@ -28,14 +28,14 @@ m = markowitz(E, V; upper=u)
 unit_sum(m) # total weight = 100%
 ts = @elapsed f = frontier(m)
 println("Markowitz CLA:  ", ts, "  seconds")     #0.14 seconds
-println("Weigths by CLA")
+println("Weigths by CLA: first 12 corner portfolios")
 display(f.weights[1:12,:])
 #norm(aEF.Z[1:2,:]-f.weights[1:2,:], Inf)
 #(aEF.Z[3,:]-f.weights[3,:])'
 println("Mean (expected return) by CLA")
 display(f.ret[1:12]')
 #norm(aEF.Z[9:end,:]-f.weights[12:end,:], Inf)
-println("there are many kinks (CLA gives repeated mu)" )
+println("there are 3 kinks (see the repeated mu: 5.29, 5.1 and 4.42)" )
 
 
 println("\n

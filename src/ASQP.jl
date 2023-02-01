@@ -443,7 +443,8 @@ function solveASQP(P::Matrix{T}, q::Vector{T}, A::Matrix{T}, b::Vector{T},
     end
 
     #return x, data.iter, data.workingSet
-    return x, data.workingSet
+    #return x, data.workingSet
+    return x
 end
 
 function iterate!(data::Data{T}) where{T}
@@ -689,9 +690,11 @@ function asCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settingsLP=
         S[N+m] = abs(g[m] - G[m, :]' * Y) < tolS ? EO : OE
     end =#
 
-    x, aS = asQP(PS; settingsLP=settingsLP)   #GMVP
-    S = getSx(x, PS, nS)
+    #x, aS = asQP(PS; settingsLP=settingsLP)   #GMVP    
     #S = activeS(aS, PS) #if fully degenarated, using x to determine S may be more reliable
+
+    x = asQP(PS; settingsLP=settingsLP)   #GMVP
+    S = getSx(x, PS, nS)
 
     computeCL!(aCL, S, PS, nS)
 end
@@ -712,6 +715,11 @@ function getSx(x, P, nS)
 end
 
 function activeS(aS, P)
+    #=
+    not reliable, why?
+    * for HMFP, it is a LP, we know there is degenarated case, even fully degenarated. that can belong to many working set
+    * for corner portfolios, it is the joit of 2 CL, each has its working set
+    =#
     (; u, M, N, J) = P
     S = fill(IN, N + J)
     S[(1:J).+N] .= OE

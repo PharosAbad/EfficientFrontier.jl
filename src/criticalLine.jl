@@ -315,8 +315,8 @@ function ECL(PS::Problem; init::Function=SimplexCL!, numSettings=Settings(PS), s
         error("Not able to find the first Critical Line")
     end
 
-    ECL!(aCL, PS; numSettings=numSettings, incL=true, settings=settings)
-    ECL!(aCL, PS; numSettings=numSettings, settings=settings)
+    ECL!(aCL, PS; numSettings=numSettings, incL=true, settings=settings, settingsLP=settingsLP)
+    ECL!(aCL, PS; numSettings=numSettings, settings=settings, settingsLP=settingsLP)
     return aCL
 end
 
@@ -364,7 +364,90 @@ compute all the Critical Line Segments as L decreasing to 0 (increasing to +Inf 
 Return value: true if done
 
 """
-function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), incL=false, settings=SettingsQP(PS), settingsLP=SettingsLP(PS)) where {T}
+function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), incL=false, settings=SettingsQP(PS), settingsLP=SettingsLP(PS), endCL=true, f=Inf) where {T}
+    tolNorm = numSettings.tolNorm
+    N = PS.N
+    t = aCL[end]
+    #f = Inf
+    while true
+        if incL && isempty(t.I1)
+            break
+        end
+        if !incL && t.L0 <= 0
+            break
+        end
+        S = nextS(t, incL, N)
+
+        bad, K = badK(S, PS, tolNorm)
+        if bad
+            if K != 0 || !endCL  #infeasible
+                break
+            end
+
+            #degenarated            
+            if incL
+                if isinf(f)
+                    f = getfield(SimplexLP(PS; settings=settingsLP), 4)
+                end
+                mu = getMu(PS, t, incL)
+                if abs(mu + f) < numSettings.tol  #hit HMFP=HVEP
+                    break
+                end
+            end
+            L1 = incL ? Inf : t.L0 / 2
+            L0 = incL ? t.L1 * 2 : 0
+            p = sCL{T}(Vector{Status}(undef, 0), 0, L1, Vector{Event{T}}(undef, 0), L0, Vector{Event{T}}(undef, 0), Vector{T}(undef, 0), Vector{T}(undef, 0))
+            #p =  sCL(PS)
+            #push!(p, sCL{T}(Vector{Status}(undef, 0), 0, L1, Vector{Event{T}}(undef, 0), L0, Vector{Event{T}}(undef, 0), Vector{T}(undef, 0), Vector{T}(undef, 0)))
+
+            p = adjoinCL(p, t, S, incL, PS, numSettings, settings, settingsLP, f)
+            #= L = (L1 + L0) / 2
+            xS = copy(S)
+            while xS == S   #in the region of degenarated
+                x = asQP(PS; settingsLP=settingsLP, L=L)
+                xS = getSx(x, PS, numSettings)
+                K = sum(xS .== IN)
+                if K > 0
+                    break
+                end
+                #now K = 0
+                if xS != S   #hit another degenarated
+                    xS = copy(S)
+                    L1 = incL ? L : L1  #make L close to t
+                    L0 = incL ? L0 : L
+                else    #K=0 && xS == S, still in the region of degenarated
+                    L1 = incL ? 2 * L1 : L
+                    L0 = incL ? L0 : 0.5 * L0
+                end
+                L = (L1 + L0) / 2
+            end # when exit, xS is not degenarated
+            xCL = sCL(PS)
+            computeCL!(xCL, xS, PS, numSettings)
+            ECL!(xCL, PS; numSettings=numSettings, settings=settings, settingsLP=settingsLP, incL=!incL, endCL=false)
+            p = incL ? xCL[end] : xCL[1]
+            xS = nextS(p, !incL, N)
+            if xS != S  #not connected
+                p = adjoinCL(p, t, S, incL, PS, numSettings, settings, settingsLP)
+            end=#
+            S .= p.S
+        end
+
+        if computeCL!(aCL, S, PS, numSettings)
+            t = aCL[end]
+            if isinf(t.L1) || t.L0 <= 0
+                break
+            end
+        else
+            display(Int(S)')
+            error("Critical Line Not Finished")
+        end
+        S .= t.S
+    end
+    sort!(aCL, by=x -> x.L1, rev=true)
+    return true
+end
+
+function ECL!0(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), incL=false, settings=SettingsQP(PS), settingsLP=SettingsLP(PS)) where {T}
     (; tol, tolNorm, tolS, muShft) = numSettings
     N = PS.N
     t = aCL[end]
@@ -422,7 +505,7 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
             #mu = (mu == 0) ? sgn * muShft : mu * (muShft * sgn + 1)
             #mu = (abs(mu) < muShft) ? sgn * muShft : ((abs(mu) < 1) ? mu + muShft * sgn  : mu * (muShft * sgn + 1)) 
             #mu = (-1 <= mu <= 1) ? mu + sgn * muShft : mu * (muShft * sgn + 1)            
-            if  mu < -1 || mu > 1
+            if mu < -1 || mu > 1
                 sgn *= mu
             end
             mu += sgn * muShft
@@ -445,6 +528,67 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
     return true
 end
 
+function nextS(t, incL, N)
+    S = copy(t.S)
+    if incL
+        q = t.I1
+        for k in eachindex(q)
+            c = q[k]
+            From = c.From
+            id = c.id
+            if From == EO || From == OE
+                id += N
+            end
+            S[id] = From
+        end
+    else
+        q = t.I0
+        for k in eachindex(q)
+            c = q[k]
+            To = c.To
+            id = c.id
+            if To == EO || To == OE
+                id += N
+            end
+            S[id] = To
+        end
+    end
+    return S
+end
+
+function adjoinCL(p, t, S, incL, PS, nS, settings, settingsLP, f)
+    L1 = incL ? p.L0 : t.L0
+    L0 = incL ? t.L1 : p.L1
+    L = (L1 + L0) / 2
+    xS = copy(S)
+    while xS == S   #in the region of degenarated
+        x = asQP(PS; settingsLP=settingsLP, L=L)
+        xS = getSx(x, PS, nS)
+        K = sum(xS .== IN)
+        if K > 0
+            break
+        end
+        #now K = 0
+        if xS != S   #hit another degenarated
+            xS = copy(S)
+            L1 = incL ? L : L1  #move in, go L close to t
+            L0 = incL ? L0 : L
+        else    #K=0 && xS == S, still in the region of degenarated
+            L1 = incL ? 2 * L1 : L      #move out, go L away from t
+            L0 = incL ? L : 0.5 * L0
+        end
+        L = (L1 + L0) / 2
+    end
+    xCL = sCL(PS)
+    computeCL!(xCL, xS, PS, nS)
+    ECL!(xCL, PS; numSettings=nS, settings=settings, settingsLP=settingsLP, incL=!incL, endCL=false, f=f)
+    p = incL ? xCL[end] : xCL[1]
+    xS = nextS(p, !incL, PS.N)
+    if xS != S      # not connected
+        p = adjoinCL(p, t, S, incL, PS, nS, settings, settingsLP, f)
+    end
+    return p
+end
 
 function getMu(PS::Problem{T}, t, incL) where {T}
     (; E, u, d, N) = PS
@@ -551,7 +695,38 @@ end
 
 """
 
-        SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsQP(PS), settingsLP=SettingsLP(PS)) where T
+        SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settingsLP=SettingsLP(PS)) where T
+
+compute the Critical Line Segments by Simplex method, for the highest expected return. Save the CL to aCL if done
+    
+    settingsLP      : `SimplexLP.Settings`, for SimplexLP solver, we always first try the SimplexLP, and a chance of >=99.9% we find the critical line
+                       when the remaining <=0.1%  happens (when the corner portfolio is degenarated, or infinite many solutions to SimplexLP encounted),
+                       we use ASQP, which use LP to obtain an initial point, so no SettingsQP needed
+
+
+See also [`cbCL!`](@ref), [`Problem`](@ref), [`Settings`](@ref), [`SettingsQP`](@ref)
+"""
+function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settingsLP=SettingsLP(PS), kwargs...) where {T}
+    S, iH, q, f = SimplexLP(PS; settings=settingsLP)  #HMFP (Highest Mean Frontier Portfolio), or HVEP (Highest Variance Efficient Portfolio), >=99.9% hit
+    if computeCL!(aCL, S, PS, nS)
+        return true     #>=99.9% done
+    end
+
+    #x, aS = asQP(PS; settingsLP=settingsLP)   #GMVP
+    #S = activeS(aS, PS)
+
+    #asCL!  for the remaining <=0.1%
+    x = asQP(PS; settingsLP=settingsLP)   #GMVP
+    S = getSx(x, PS, nS)
+
+    computeCL!(aCL, S, PS, nS)
+end
+
+
+#using LightenQP
+"""
+
+        LightenCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsQP(PS), settingsLP=SettingsLP(PS)) where T
 
 compute the Critical Line Segments by Simplex method, for the highest expected return. Save the CL to aCL if done
 
@@ -560,29 +735,16 @@ compute the Critical Line Segments by Simplex method, for the highest expected r
 
 See also [`cbCL!`](@ref), [`Problem`](@ref), [`Settings`](@ref), [`SettingsQP`](@ref)
 """
-function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsQP(PS), settingsLP=SettingsLP(PS)) where {T}
-    S, iH, q, f = SimplexLP(PS; settings=settingsLP)  #HMFP (Highest Mean Frontier Portfolio), or HVEP (Highest Variance Efficient Portfolio), >=99.9% hit
-    if computeCL!(aCL, S, PS, nS)
-        return true
-    end
-
-    x, aS = asQP(PS; settingsLP=settingsLP)   #GMVP
-    S = activeS(aS, PS)
-
-    computeCL!(aCL, S, PS, nS)
-end
-
-#using LightenQP
 function LightenCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsQP(PS), settingsLP=SettingsLP(PS)) where {T}
     S, iH, q, f = SimplexLP(PS; settings=settingsLP)  #HMFP (Highest Mean Frontier Portfolio), or HVEP (Highest Variance Efficient Portfolio), >=99.9% hit
     if computeCL!(aCL, S, PS, nS)
         return true
     end
-    
-    x, status = fPortfolio(PS; settings=settings)   #GMVP, LVEP (Lowest Variance Efficient Portfolio),  may fail, leave it to computeCL!
-    S = getS(x.s, PS, nS.tolS) 
 
-    
+    x, status = fPortfolio(PS; settings=settings)   #GMVP, LVEP (Lowest Variance Efficient Portfolio),  may fail, leave it to computeCL!
+    S = getS(x.s, PS, nS.tolS)
+
+
     computeCL!(aCL, S, PS, nS)
 end
 
