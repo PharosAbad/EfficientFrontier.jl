@@ -644,6 +644,11 @@ function asQP(PS::Problem{T}, mu::T; settingsLP=SettingsLP(PS)) where {T}
         solveLP = maxImprvLP
     end
 
+    if isinf(mu)
+        min = mu == Inf ? false : true
+        mu = getfield(SimplexLP(PS; settings=settingsLP, min=min), 4)
+    end
+
     #An initial feasible point by performing Phase-I Simplex on the polyhedron
     Ms = M + 1 + J  #convert Gz<=g to equality
     Ns = N + J
