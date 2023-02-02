@@ -75,6 +75,8 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
     x = zeros(T, N)
     x[S.==UP] .= u[S.==UP]
     x[S.==DN] .= d[S.==DN]
+    ud = u - d
+    du = -ud
 
     Y = invB * A[:, F]
     h = c[F] - Y' * c[B]
@@ -110,13 +112,9 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                 end
             end
 
-            g0 = u[k] - d[k]
+            g0 = ud[k] #u[k] - d[k]
             if m == 0
                 if isfinite(g0) #DN -> UP
-                    #= S[k] = UP
-                    x[k] = u[k]
-                    q -= g0 * p
-                    l = -k  =#
                     l = -1
                 else
                     error("infeasible or unbounded")
@@ -126,10 +124,6 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                 Sl = Sb[l]
                 l = ip[l]
                 if gl > g0
-                    #= S[k] = UP
-                    x[k] = u[k]
-                    q -= g0 * p
-                    l = -k  =#
                     l = -1
                 end
             end
@@ -150,13 +144,9 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                 end
             end
 
-            g0 = d[k] - u[k]
+            g0 = du[k] #d[k] - u[k]
             if m == 0
                 if isfinite(g0) #UP -> DN
-                    #= S[k] = DN
-                    x[k] = d[k]
-                    q -= g0 * p
-                    l = -k  =#
                     l = -2
                 else
                     error("infeasible or unbounded")
@@ -166,33 +156,26 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                 Sl = Sb[l]
                 l = ip[l]
                 if gl < g0
-                    #= S[k] = DN
-                    x[k] = d[k]
-                    q -= g0 * p
-                    l = -k  =#
                     l = -2
                 end
             end
 
         end
 
-        if l == -1
-            S[k] = UP
-            x[k] = u[k]
-            q -= g0 * p
-            #l = -k
-        elseif l == -2
-            S[k] = DN
-            x[k] = d[k]
-            q -= g0 * p
-            #l = -k
-        end
-
         loop += 1
         if loop > N
             Bland = true    #Dantzig rule switch to Bland rule
         end
-        if l > 0
+
+        if l == -1  #flip the sate
+            S[k] = UP
+            x[k] = u[k]
+            q -= g0 * p
+        elseif l == -2  #flip the sate
+            S[k] = DN
+            x[k] = d[k]
+            q -= g0 * p
+        elseif l > 0
             m = l
             l = B[l]       #leaving index
             F[k] = false
@@ -259,8 +242,9 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
     vS = S[F]   #State of leaving to be, for each candidate k
     g = zeros(N - M)    #theta for each candidate k
     gi = zeros(Int64, N - M)    #min subscrip for theta for each candidate k
-    vD = falses(N - M)  #DN or not, for each candidate k
+    #vD = falses(N - M)  #DN or not, for each candidate k
     ud = u - d
+    du = -ud
 
     ih = S[F] .== DN
     h[ih] .= -h[ih]
@@ -273,7 +257,7 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
             k = iH[n]
             p = P[:, n]
             kd = S[k] == DN
-            vD[n] = kd
+            #vD[n] = kd
             m = 0
             if kd
                 for j in 1:M
@@ -294,12 +278,13 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                 if m == 0
                     g[n] = ud[k]
                     l = 1
-                    ip[1] = 0   #isfinite(u[k]) to flip state, isinf(u[k]) unbounded
+                    ip[1] = -1   #isfinite(u[k]) to flip state, isinf(u[k]) unbounded
                 else
                     (g[n], l) = findmin(gt[1:m])
                 end
                 if g[n] > ud[k]
                     g[n] = ud[k]
+                    ip[l] = -1
                 end
             else
                 for j in 1:M
@@ -318,14 +303,15 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                 end
 
                 if m == 0
-                    g[n] = -ud[k]
+                    g[n] = du[k]
                     l = 1
-                    ip[1] = 0   #isfinite(u[k]) to flip state, isinf(u[k]) unbounded
+                    ip[1] = -2   #isfinite(u[k]) to flip state, isinf(u[k]) unbounded
                 else
                     (g[n], l) = findmax(gt[1:m])
                 end
-                if g[n] < -ud[k]
-                    g[n] = -ud[k]
+                if g[n] < du[k]
+                    g[n] = du[k]
+                    ip[l] = -2
                 end
             end
             gi[n] = ip[l]
@@ -333,32 +319,24 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
         end
         k = getfield(findmax(abs.(h[ih] .* g[1:nH])), 2)
         l = gi[k]
-        if l == 0 && isinf(u[k])
+        if l < 0 && isinf(u[k])
             error("infeasible or unbounded")
         end
-        # if l == 0 && isfinite(u[k]),  then gl == ±ud[k], will handle later
-        kd = vD[k]
+
+        #kd = vD[k]
         p = P[:, k]
         gl = g[k]
         Sl = vS[k]
         k = iH[k]   #entering index
-        if kd
-            if gl == ud[k]  # l>=0, maybe l==0
-                S[k] = UP
-                x[k] = u[k]
-                q -= gl * p
-                l = -k
-            end
-        else
-            if gl == -ud[k]
-                S[k] = DN
-                x[k] = d[k]
-                q -= gl * p
-                l = -k
-            end
-        end
-        #remove all l==0 case, now, if l<0, we have flip the sate of k
-        if l > 0
+        if l == -1  #flip the sate
+            S[k] = UP
+            x[k] = u[k]
+            q -= gl * p
+        elseif l == -2  #flip the sate
+            S[k] = DN
+            x[k] = d[k]
+            q -= gl * p
+        elseif l > 0
             m = l
             l = B[l]       #leaving index
             F[k] = false
