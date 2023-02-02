@@ -110,8 +110,8 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                 end
             end
 
-            if m == 0
-                error("infeasible or degenerate")
+            #= if m == 0
+                error("infeasible or unbounded")
             end
             g0 = u[k] - d[k]
             (gl, l) = findmin(gt[1:m])
@@ -122,7 +122,29 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                 x[k] = u[k]
                 q -= g0 * p
                 l = -k
+            end =#
+            g0 = u[k] - d[k]
+            if m == 0
+                if isfinite(g0) #DN -> UP
+                    S[k] = UP
+                    x[k] = u[k]
+                    q -= g0 * p
+                    l = -k
+                else
+                    error("infeasible or unbounded")
+                end
+            else
+                (gl, l) = findmin(gt[1:m])
+                Sl = Sb[l]
+                l = ip[l]
+                if gl > g0
+                    S[k] = UP
+                    x[k] = u[k]
+                    q -= g0 * p
+                    l = -k
+                end
             end
+
         else
             for j in 1:M
                 i = B[j]
@@ -139,8 +161,8 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                 end
             end
 
-            if m == 0
-                error("infeasible or degenerate")
+            #= if m == 0
+                error("infeasible or unbounded")
             end
             g0 = d[k] - u[k]
             (gl, l) = findmax(gt[1:m])
@@ -151,7 +173,30 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                 x[k] = d[k]
                 q -= g0 * p
                 l = -k
+            end =#
+
+            g0 = d[k] - u[k]
+            if m == 0
+                if isfinite(g0) #UP -> DN
+                    S[k] = DN
+                    x[k] = d[k]
+                    q -= g0 * p
+                    l = -k
+                else
+                    error("infeasible or unbounded")
+                end
+            else
+                (gl, l) = findmax(gt[1:m])
+                Sl = Sb[l]
+                l = ip[l]
+                if gl < g0
+                    S[k] = DN
+                    x[k] = d[k]
+                    q -= g0 * p
+                    l = -k
+                end
             end
+
         end
         loop += 1
         if loop > N
@@ -187,7 +232,7 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
     iH = findall(F)[ih]
     x[B] = q
     #return q, B, invB, iH, c' * x
-    return c' * x, x, q, B, invB, iH 
+    return c' * x, x, q, B, invB, iH
 end
 
 
@@ -226,13 +271,13 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
     vS = S[F]   #State of leaving to be, for each candidate k
     g = zeros(N - M)    #theta for each candidate k
     gi = zeros(Int64, N - M)    #min subscrip for theta for each candidate k
-    vD = falses(N - M)  #DN  or not for each candidate k
+    vD = falses(N - M)  #DN or not, for each candidate k
     ud = u - d
 
     ih = S[F] .== DN
     h[ih] .= -h[ih]
     ih = h .> tol
-    hp = h[ih]
+    #hp = h[ih]
     iH = findall(F)[ih]
     nH = length(iH)
     while nH > 0
@@ -260,9 +305,15 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                 end
 
                 if m == 0
-                    error("infeasible or degenerate")
+                    #error("infeasible or unbounded")
+                    #g[n] = isfinite(u[k]) ? ud[k] : 0
+                    g[n] = ud[k]
+                    l = 1
+                    ip[1] = 0   #isfinite(u[k]) to flip state, isinf(u[k]) unbounded
+                else
+                    (g[n], l) = findmin(gt[1:m])
                 end
-                (g[n], l) = findmin(gt[1:m])
+                #(g[n], l) = findmin(gt[1:m])
                 if g[n] > ud[k]
                     g[n] = ud[k]
                 end
@@ -283,9 +334,15 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                 end
 
                 if m == 0
-                    error("infeasible or degenerate")
+                    #error("infeasible or unbounded")
+                    #g[n] = isfinite(ud[k]) ? ud[k] : 0
+                    g[n] = -ud[k]
+                    l = 1
+                    ip[1] = 0   #isfinite(u[k]) to flip state, isinf(u[k]) unbounded
+                else
+                    (g[n], l) = findmax(gt[1:m])
                 end
-                (g[n], l) = findmax(gt[1:m])
+                #(g[n], l) = findmax(gt[1:m])
                 if g[n] < -ud[k]
                     g[n] = -ud[k]
                 end
@@ -295,13 +352,17 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
         end
         k = getfield(findmax(abs.(h[ih] .* g[1:nH])), 2)
         l = gi[k]
+        if l == 0 && isinf(u[k])
+            error("infeasible or unbounded")
+        end
+        # if l == 0 && isfinite(u[k]),  then gl == ±ud[k], will handle later
         kd = vD[k]
         p = P[:, k]
         gl = g[k]
         Sl = vS[k]
         k = iH[k]   #entering index
         if kd
-            if gl == ud[k]
+            if gl == ud[k]  # l>=0, maybe l==0
                 S[k] = UP
                 x[k] = u[k]
                 q -= gl * p
@@ -315,7 +376,7 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                 l = -k
             end
         end
-
+        #remove all l==0 case, now, if l<0, we have flip the sate of k
         if l > 0
             m = l
             l = B[l]       #leaving index
@@ -337,7 +398,7 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
         ih = S[F] .== DN
         h[ih] .= -h[ih]
         ih = h .> tol
-        hp = h[ih]
+        #hp = h[ih]
         iH = findall(F)[ih]
         nH = length(iH)
     end
@@ -346,7 +407,7 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
     iH = findall(F)[ih]
     x[B] = q
     #return q, B, invB, iH, c' * x
-    return c' * x, x, q, B, invB, iH 
+    return c' * x, x, q, B, invB, iH
 end
 
 
@@ -456,7 +517,7 @@ function WolfeLP!(L, c, A, b, d, B, S; invB, q, tol=2^-26)
         end
 
         if m == 0
-            error("infeasible or degenerate")
+            error("infeasible or unbounded")
         end
 
         l = getfield(findmin(gt[1:m]), 2)
@@ -469,11 +530,11 @@ function WolfeLP!(L, c, A, b, d, B, S; invB, q, tol=2^-26)
         #Complementary slackness
         if k <= 2 * L
             C[k] = false
-            C[k<=L ? k+L : k-L] = false
+            C[k <= L ? k + L : k - L] = false
         end
         if l <= 2 * L
             C[l] = true
-            C[l<=L ? l+L : l-L] = true
+            C[l <= L ? l + L : l - L] = true
         end
 
 
@@ -587,7 +648,7 @@ Since `SimplexQP!` may fail, we give it up. Now using `EfficientFrontier.Simplex
 
 """
 function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=SettingsEF(PS), settingsLP=Settings(PS), kwargs...) where {T}
-#function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=SettingsEF(PS), settings=Settings(PS), settingsLP=Settings(PS)) where {T}
+    #function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=SettingsEF(PS), settings=Settings(PS), settingsLP=Settings(PS)) where {T}
     #(; u, d, N, M, J) = PS
     #(; muShft, tolS, rule) = nS
 
@@ -599,8 +660,8 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=SettingsEF(PS), sett
     #mu = f * (nS.muShft - 1)    #assume Highest Mean > 0
     # mu = -f
     #sgn = (mu >= 0 ? -1 : 1)
-    shft =  nS.muShft
-    if  mu < -1 || mu > 1
+    shft = nS.muShft
+    if mu < -1 || mu > 1
         #sgn *= mu
         shft *= abs(mu)
     end
@@ -700,7 +761,7 @@ function oneCL!(aCL::Vector{sCL{T}}, PS::Problem{T}, S0::Vector{Status}, iH; nS=
     return false
 end
 
-function LPcbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=SettingsEF(PS), settings=Settings(PS), settingsLP=Settings(PS) ) where {T}
+function LPcbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=SettingsEF(PS), settings=Settings(PS), settingsLP=Settings(PS)) where {T}
     #Simplex LP + combinations
     (; u, d, N, M, J) = PS
     #(; tolS, rule) = nS

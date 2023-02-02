@@ -401,34 +401,6 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
             #push!(p, sCL{T}(Vector{Status}(undef, 0), 0, L1, Vector{Event{T}}(undef, 0), L0, Vector{Event{T}}(undef, 0), Vector{T}(undef, 0), Vector{T}(undef, 0)))
 
             p = adjoinCL(p, t, S, incL, PS, numSettings, settings, settingsLP, f)
-            #= L = (L1 + L0) / 2
-            xS = copy(S)
-            while xS == S   #in the region of degenerated
-                x = asQP(PS; settingsLP=settingsLP, L=L)
-                xS = getSx(x, PS, numSettings)
-                K = sum(xS .== IN)
-                if K > 0
-                    break
-                end
-                #now K = 0
-                if xS != S   #hit another degenerated
-                    xS = copy(S)
-                    L1 = incL ? L : L1  #make L close to t
-                    L0 = incL ? L0 : L
-                else    #K=0 && xS == S, still in the region of degenerated
-                    L1 = incL ? 2 * L1 : L
-                    L0 = incL ? L0 : 0.5 * L0
-                end
-                L = (L1 + L0) / 2
-            end # when exit, xS is not degenerated
-            xCL = sCL(PS)
-            computeCL!(xCL, xS, PS, numSettings)
-            ECL!(xCL, PS; numSettings=numSettings, settings=settings, settingsLP=settingsLP, incL=!incL, endCL=false)
-            p = incL ? xCL[end] : xCL[1]
-            xS = nextS(p, !incL, N)
-            if xS != S  #not connected
-                p = adjoinCL(p, t, S, incL, PS, numSettings, settings, settingsLP)
-            end=#
             S .= p.S
         end
 

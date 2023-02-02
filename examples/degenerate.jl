@@ -41,7 +41,7 @@ println("there are 3 kinks (see the repeated mu: 5.29, 5.1 and 4.42)" )
 println("\n
 
 Remark: endpoint corner portfolios are 
-* LVEP (Lowest Variance Efficient Portfolio), also called GMVP (Global Minimum Variance Portfolio) 
-* HVEP (Highest Variance Efficient Portfolio), also called HMFP (Highest Mean Frontier Portfolio) 
+* LMEP (Lowest Mean Efficient Portfolio) == LVEP (Lowest Variance Efficient Portfolio) == GMVP (Global Minimum Variance Portfolio)
+* HMEP (Highest Mean Efficient Portfolio) == HVEP (Highest Variance Efficient Portfolio) == HMFP (Highest Mean Frontier Portfolio)
 
 ")
