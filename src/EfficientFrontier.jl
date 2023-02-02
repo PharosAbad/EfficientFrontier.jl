@@ -4,7 +4,7 @@
 module EfficientFrontier
 
 export Status, IN, DN, UP, OE, EO, Event, sCL, Problem, Settings, sEF, SettingsQP, SettingsLP
-export computeCL!, ECL!, cbCL!, eFrontier, ePortfolio
+export computeCL!, ECL!, cbCL!, eFrontier, ePortfolio, mu2L, L2mu
 
 using LinearAlgebra, Combinatorics
 
@@ -29,7 +29,7 @@ include("./EVdata.jl")
 
 include("./ASQP.jl")
 using .ASQP
-export solveASQP, asQP, asCL!, activeS, getSx
+export solveASQP, asQP, asCL!, getSx
 
 #=
 Base.precompile(Tuple{Core.Typeof(ECL), Problem{Float64}})

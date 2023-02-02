@@ -387,10 +387,10 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
             #degenerated            
             if incL
                 if isinf(f)
-                    f = getfield(SimplexLP(PS; settings=settingsLP), 4)
+                    f = getfield(SimplexLP(PS; settings=settingsLP, min=false), 4)
                 end
                 mu = getMu(PS, t, incL)
-                if abs(mu + f) < numSettings.tol  #hit HMFP=HVEP
+                if abs(mu - f) < numSettings.tol  #hit HMFP=HVEP
                     break
                 end
             end
@@ -495,9 +495,9 @@ function ECL!0(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), in
             sgn = -1.0 * (mu >= 0 ? 1 : -1) #going down
             if incL
                 if isinf(f)
-                    f = getfield(SimplexLP(PS; settings=settingsLP), 4)
+                    f = getfield(SimplexLP(PS; settings=settingsLP, min=false), 4)
                 end
-                if abs(mu + f) < tol  #hit HMFP=HVEP
+                if abs(mu - f) < tol  #hit HMFP=HVEP
                     break
                 end
                 sgn = -sgn    #going up
@@ -707,7 +707,7 @@ compute the Critical Line Segments by Simplex method, for the highest expected r
 See also [`cbCL!`](@ref), [`Problem`](@ref), [`Settings`](@ref), [`SettingsQP`](@ref)
 """
 function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settingsLP=SettingsLP(PS), kwargs...) where {T}
-    S, iH, q, f = SimplexLP(PS; settings=settingsLP)  #HMFP (Highest Mean Frontier Portfolio), or HVEP (Highest Variance Efficient Portfolio), >=99.9% hit
+    S, iH, q, f = SimplexLP(PS; settings=settingsLP, min=false)  #HMFP (Highest Mean Frontier Portfolio), or HVEP (Highest Variance Efficient Portfolio), >=99.9% hit
     if computeCL!(aCL, S, PS, nS)
         return true     #>=99.9% done
     end
@@ -736,7 +736,7 @@ compute the Critical Line Segments by Simplex method, for the highest expected r
 See also [`cbCL!`](@ref), [`Problem`](@ref), [`Settings`](@ref), [`SettingsQP`](@ref)
 """
 function LightenCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsQP(PS), settingsLP=SettingsLP(PS)) where {T}
-    S, iH, q, f = SimplexLP(PS; settings=settingsLP)  #HMFP (Highest Mean Frontier Portfolio), or HVEP (Highest Variance Efficient Portfolio), >=99.9% hit
+    S, iH, q, f = SimplexLP(PS; settings=settingsLP, min=false)  #HMFP (Highest Mean Frontier Portfolio), or HVEP (Highest Variance Efficient Portfolio), >=99.9% hit
     if computeCL!(aCL, S, PS, nS)
         return true
     end

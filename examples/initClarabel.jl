@@ -83,23 +83,3 @@ aEF = eFrontier(aCL, Pu)
 println("Status-Segment Method:  ", ts, "  seconds")    #0.061639485  seconds
 aCLu[7].S == aCL[7].S
 
-#=
-using LinearAlgebra
-aCL = aCLu
-tolNorm = 2^-26
-
-nL = lastindex(aCL)
-W = trues(nL)
-K = 0
-for k in eachindex(aCL)
-    if norm(aCL[k].beta) < tolNorm
-        W[k] = false
-    end
-    global K = max(K, aCL[k].K)
-end
-
-display( findall(.!W) )
-#CL 1 is singular, the starting point of frontier, CL 9 is also a singular, hence a kink
-
-println("CLA  ", size(f.weights,1), "\ncCLS ", size(aEFu.Z,1), "\nmax K: ", K)
-=#

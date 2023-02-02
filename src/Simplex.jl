@@ -38,7 +38,6 @@ function Settings{BigFloat}(; tol=BigFloat(2)^-76,
 end
 
 function Settings(P::Problem{T}; kwargs...) where {T}
-    #Settings{typeof(P).parameters[1]}(; kwargs...)
     Settings{T}(; kwargs...)
 end
 
@@ -354,14 +353,13 @@ end
 
 """
 
-        SimplexLP(PS::Problem; settings=Simplex.Settings(PS))
+        SimplexLP(PS::Problem; settings=Simplex.Settings(PS), min=true)
 
-find the `Status` for assets by simplex method
+find the `Status` for assets by simplex method. If `min=false`, we maximize the objective function
 
 See also [`Status`](@ref), [`Problem`](@ref), [`EfficientFrontier.Simplex.Settings`](@ref), [`EfficientFrontier.Simplex.cDantzigLP`](@ref), [`EfficientFrontier.Simplex.maxImprvLP`](@ref)
 """
-function SimplexLP(PS::Problem{T}; settings=Settings(PS)) where {T}
-#function SimplexLP(PS::Problem{T}, tol=sqrt(eps(T)); rule=:Dantzig) where {T}
+function SimplexLP(PS::Problem{T}; settings=Settings(PS), min=true) where {T}
     (; E, u, d, G, g, A, b, N, M, J) = PS
     (; tol, rule) = settings
 
@@ -397,28 +395,30 @@ function SimplexLP(PS::Problem{T}; settings=Settings(PS)) where {T}
     d1 = [ds; zeros(T, Ms)]
     u1 = [us; fill(Inf, Ms)]
 
-    #(q, B, invB, iH) = DantzigBlandLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
-    #(q, B, invB, iH, f) = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
     f, x, q, B, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
     if f > tol
         error("feasible region is empty")
     end
 
     #display("--- --- phase 2 --- ---")
-    # q, B, invB, h
     S = S[1:Ns]
-
-
-    #(q, B, invB, iH, f) = solveLP(-Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
-    f, x, q, B, invB, iH = solveLP(-Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
+    #sgn = min == true ? 1 : -1
+    if !min
+        Es = -Es
+    end
+    #f, x, q, B, invB, iH = solveLP(-Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
+    f, x, q, B, invB, iH = solveLP(Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
+    if !min
+        f = -f
+    end
 
     for k in N+1:N+J
         S[k] = S[k] == IN ? OE : EO
     end
 
     return S, iH, q, f
-
 end
+
 
 function WolfeLP!(L, c, A, b, d, B, S; invB, q, tol=2^-26)
     #Complementary slackness LP, #no upper bound, only lower bound
@@ -591,13 +591,13 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=SettingsEF(PS), sett
     #(; u, d, N, M, J) = PS
     #(; muShft, tolS, rule) = nS
 
-    (S, iH, q, f) = SimplexLP(PS; settings=settingsLP)
+    (S, iH, q, f) = SimplexLP(PS; settings=settingsLP, min=false)
     if computeCL!(aCL, S, PS, nS)
         return true
     end
     #display("------- SimplexQP!  -------")
     #mu = f * (nS.muShft - 1)    #assume Highest Mean > 0
-    mu = -f
+    # mu = -f
     #sgn = (mu >= 0 ? -1 : 1)
     shft =  nS.muShft
     if  mu < -1 || mu > 1
@@ -706,7 +706,7 @@ function LPcbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=SettingsEF(PS), setting
     #(; tolS, rule) = nS
     tolS = nS.tolS
 
-    (S, iH, q, f) = SimplexLP(PS; settings=settingsLP)
+    (S, iH, q, f) = SimplexLP(PS; settings=settingsLP, min=false)
     j0 = sum(S[N+1:N+J] .== EO)
 
     #iH = iH[iH .<= N]   #It seems shoud be do so

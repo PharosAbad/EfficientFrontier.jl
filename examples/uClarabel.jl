@@ -52,7 +52,13 @@ end
 =#
 
 function ClarabelQP(PS::Problem{T}; settings=SettingsCl(), L::T=0.0) where {T}
-    #function ClarabelQP(PS::Problem{T}; settings= SettingsCl(PS; verbose = false)) where {T}
+
+    if isinf(L)
+        min = L == Inf ? false : true
+        x = ClarabelLP(PS; settings=settings, min=min)
+        return ClarabelQP(PS, x.obj_val; settings=settings)
+    end
+
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
     iu = findall(u .< Inf)
     P = sparse(V)
@@ -61,8 +67,13 @@ function ClarabelQP(PS::Problem{T}; settings=SettingsCl(), L::T=0.0) where {T}
     bc = [b; g; -d; u[iu]]
     cones = [Clarabel.ZeroConeT(M), Clarabel.NonnegativeConeT(J + N + length(iu))]
     solver = Clarabel.Solver{T}()
-    #Clarabel.setup!(solver, P, q, Ac, bc, cones, settings)
-    #Clarabel.solve!(solver)
+    if L == 0
+        qq = zeros(T, N)
+    else
+        qq = -L * E
+    end
+
+    #=
     if L == 0
         Clarabel.setup!(solver, P, zeros(T, N), Ac, bc, cones, settings)
         return Clarabel.solve!(solver)
@@ -71,25 +82,32 @@ function ClarabelQP(PS::Problem{T}; settings=SettingsCl(), L::T=0.0) where {T}
         Clarabel.setup!(solver, P, -L * E, Ac, bc, cones, settings)
         return Clarabel.solve!(solver)
     end
-    sgn = L == Inf ? -1 : 1
-    Clarabel.setup!(solver, P, sgn * E, Ac, bc, cones, settings)
+    =#
+    Clarabel.setup!(solver, P, qq, Ac, bc, cones, settings)
     return Clarabel.solve!(solver)
 end
 
 
 #find the highest mean: -x.obj_val
-function ClarabelLP(PS::Problem{T}; settings=SettingsCl()) where {T}
+function ClarabelLP(PS::Problem{T}; settings=SettingsCl(), min=true) where {T}
     #function ClarabelLP(PS::Problem{T}; settings= SettingsCl(PS; verbose = false)) where {T}
     (; E, u, d, G, g, A, b, N, M, J) = PS
     iu = findall(u .< Inf)
     P = spzeros(T, N, N)
-    q = -E
+    #q = -E
+    #sgn = min == true ? 1 : -1    
+    q = min ? E : -E
     Ac = sparse([A; G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]])
     bc = [b; g; -d; u[iu]]
     cones = [Clarabel.ZeroConeT(M), Clarabel.NonnegativeConeT(J + N + length(iu))]
     solver = Clarabel.Solver{T}()
     Clarabel.setup!(solver, P, q, Ac, bc, cones, settings)
-    Clarabel.solve!(solver)
+    #Clarabel.setup!(solver, P, sgn * E, Ac, bc, cones, settings)
+    x = Clarabel.solve!(solver)
+    if !min
+        x.obj_val = -x.obj_val
+    end
+    return x
 end
 
 
@@ -105,11 +123,12 @@ compute the Critical Line Segments by Clarabel.jl (Interior Point QP), for the h
 function ClarabelCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsCl(), kwargs...) where {T}
     #function ClarabelCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsCl(PS; verbose = false), kwargs...) where {T}
 
-    x = ClarabelLP(PS; settings=settings)
+    x = ClarabelLP(PS; settings=settings, min=false)
     if Int(x.status) != 1   #SOLVED
         error("Not able to find the expected return of HMFP (Highest Mean Frontier Portfolio)")
     end
-    mu = -x.obj_val
+    #mu = -x.obj_val
+    mu = x.obj_val
     shft = nS.muShft
     if mu < -1 || mu > 1
         shft *= abs(mu)

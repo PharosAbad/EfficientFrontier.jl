@@ -7,10 +7,7 @@ module ASQP
 using LinearAlgebra
 using Polynomials
 using EfficientFrontier: EfficientFrontier, Problem, Status, Event, sCL, IN, DN, UP, OE, EO, computeCL!, Settings, SettingsLP
-export solveASQP, asQP, asCL!, activeS, getSx
-#export UpdatableQR, NullspaceHessianLDL, NullspaceHessian
-#export addColumn!, removeColumn!
-#export addConstraint!, removeConstraint!
+export solveASQP, asQP, asCL!, getSx
 
 using EfficientFrontier.Simplex: cDantzigLP, maxImprvLP
 
@@ -562,13 +559,22 @@ end
 
 
 function asQP(PS::Problem{T}; settingsLP=SettingsLP(PS), L::T=0.0) where {T}
+
+    if isinf(L)
+        min = L == Inf ? false : true
+        mu = getfield(SimplexLP(PS; settings=settingsLP, min=min), 4)
+        #= if L==Inf 
+            mu = -mu
+        end =#
+        return asQP(PS, mu; settingsLP=settingsLP)
+    end
+    
+    #finite L
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
     (; tol, rule) = settingsLP
 
-    #solveLP = EfficientFrontier.Simplex.cDantzigLP
     solveLP = cDantzigLP
     if rule == :maxImprovement
-        #solveLP = EfficientFrontier.Simplex.maxImprvLP
         solveLP = maxImprvLP
     end
 
@@ -610,25 +616,31 @@ function asQP(PS::Problem{T}; settingsLP=SettingsLP(PS), L::T=0.0) where {T}
     bq = [b; -b; g; -d; u[iu]]
     if L == 0
         qq = zeros(T, N)
-        return solveASQP(V, qq, Aq, bq, x)        
+    else
+        qq = -L * E
+    end
+    return solveASQP(V, qq, Aq, bq, x)
+
+    #= if L == 0
+        qq = zeros(T, N)
+        return solveASQP(V, qq, Aq, bq, x)
     end
     if isfinite(L)
         qq = -L * E
-        return solveASQP(V, qq, Aq, bq, x)        
+        return solveASQP(V, qq, Aq, bq, x)
     end
 
     sgn = L == Inf ? -1 : 1
-    return solveASQP(zeros(T, N, N), sgn * E, Aq, bq, x)
+    return solveASQP(zeros(T, N, N), sgn * E, Aq, bq, x)    #LP, not QP
+    =#
 end
 
 function asQP(PS::Problem{T}, mu::T; settingsLP=SettingsLP(PS)) where {T}
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
     (; tol, rule) = settingsLP
 
-    #solveLP = EfficientFrontier.Simplex.cDantzigLP
     solveLP = cDantzigLP
     if rule == :maxImprovement
-        #solveLP = EfficientFrontier.Simplex.maxImprvLP
         solveLP = maxImprvLP
     end
 
@@ -714,6 +726,7 @@ function getSx(x, P, nS)
     return S
 end
 
+#=
 function activeS(aS, P)
     #=
     not reliable, why?
@@ -744,6 +757,7 @@ function activeS(aS, P)
     end
     return S
 end
+=#
 
 end
 

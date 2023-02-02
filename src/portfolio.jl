@@ -212,3 +212,54 @@ end
 
 
 
+"""
+
+            mu2L(aEF::sEF, aCL::Vector{sCL{T}}, mu::T) where T
+
+compute L from mu
+"""
+function mu2L(aEF::sEF, aCL::Vector{sCL{T}}, mu::T) where T
+    #L=a₂(μ-μ_{o}) , thus we use the linearity L-L₀=β(L₁-L₀)   β=((μ-μ₀)/(μ₁-μ₀))
+    u = aEF.mu
+    if mu >= u[1]
+        return aCL[aEF.ic[1]].L1
+    elseif mu <= u[end]
+        return 0.0
+    end
+
+    #k = searchsortedlast(u, mu, rev=true)
+    k = 1
+    while u[k] > mu
+        k += 1
+    end
+    k -= 1
+    t = aCL[aEF.ic[k]]  #  u[k] > mu >= u[k+1]
+    bt = (mu - u[k+1]) / (u[k] - u[k+1])
+    bt * (t.L1 - t.L0) + t.L0
+end
+
+
+"""
+
+        L2mu(aEF::sEF, aCL::Vector{sCL{T}}, mu::T) where T
+
+compute mu from L
+"""
+function L2mu(aEF::sEF, aCL::Vector{sCL{T}}, L::T) where T
+    #μ=μ_{o}+qL => μ-μ₀=β(μ₁-μ₀)   β=((L-L₀)/(L₁-L₀))
+    u = aEF.mu
+    if L <= 0
+        return u[end]
+    end
+    k = 1
+    while aCL[aEF.ic[k]].L0 > L
+        k += 1
+    end
+    t = aCL[aEF.ic[k]]  #L >= t.L0
+    if L > t.L1     #degenerated or singular points
+        L = t.L1
+    end
+    bt = (L - t.L0) / (t.L1 - t.L0)
+    bt * (u[k] - u[k+1]) + u[k+1]
+
+end
