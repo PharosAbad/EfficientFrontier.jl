@@ -45,17 +45,25 @@ if length(filter((x) -> x == :Markowitz, names(Main, imported=true))) == 0
     using .Markowitz
 end
 
-m = markowitz(E, V)
-unit_sum(m) # total weight = 100%
-ts = @elapsed f = frontier(m)
-println("Markowitz CLA:  ", ts, "  seconds")     #0.14 seconds
-display(f.weights)
 
-t0 = time()
-P = Problem(E, V; equilibrate=false)
-ts = @elapsed aCL = EfficientFrontier.ECL(P)
-aEF = eFrontier(aCL, P)
-t1 = time()
-println("Status-Segment Method:  ", ts, "  seconds")    #0.039446974  seconds
-#display(t1 - t0)    #0.083 seconds
-display(aEF.Z)
+
+function main(E, V)
+
+    m = markowitz(E, V)
+    unit_sum(m) # total weight = 100%
+    ts = @elapsed f = frontier(m)
+    println("Markowitz CLA:  ", ts, "  seconds")     #0.14 seconds
+    display(f.weights)
+
+    t0 = time()
+    P = Problem(E, V; equilibrate=false)
+    ts = @elapsed aCL = EfficientFrontier.ECL(P)
+    aEF = eFrontier(aCL, P)
+    t1 = time()
+    println("Status-Segment Method:  ", ts, "  seconds")    #0.039446974  seconds
+    #display(t1 - t0)    #0.083 seconds
+    display(aEF.Z)
+end
+
+main(E, V)
+nothing
