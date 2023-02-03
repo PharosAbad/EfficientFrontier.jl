@@ -713,7 +713,7 @@ function LightenCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
         return true
     end
 
-    x, status = fPortfolio(PS; settings=settings)   #GMVP, LVEP (Lowest Variance Efficient Portfolio),  may fail, leave it to computeCL!
+    x, status = LightenQP.fPortfolio(OOQP(PS); settings=settings)   #GMVP, LVEP (Lowest Variance Efficient Portfolio),  may fail, leave it to computeCL!
     S = getS(x.s, PS, nS.tolS)
 
 
