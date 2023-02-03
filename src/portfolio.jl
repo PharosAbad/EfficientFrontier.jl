@@ -93,7 +93,7 @@ end
 """
 
         z = ePortfolio(aEF::sEF, mu)
-        z = ePortfolio(P::Problem, mu; nS=Settings(P))                                  #one-step, given mu
+        z = ePortfolio(P::Problem, mu; nS=Settings(P), settings, settingsLP)            #one-step, given mu
         z = ePortfolio(aCL::Vector{sCL}, P::Problem, L)
         z = ePortfolio(P::Problem; nS=Settings(P), settings, settingsLP, L::T=0.0)      #one-step, given L
 
@@ -128,6 +128,23 @@ function ePortfolio(aEF::sEF, mu::Float64)
     return bt * Z[k, :] + (1 - bt) * Z[k+1, :]
 end
 
+
+function ePortfolio(P::Problem, mu::Float64; nS=Settings(P), settings=SettingsQP(P), settingsLP=SettingsLP(P))
+    aEF = eFrontier(ECL(P; numSettings=nS, settings=settings, settingsLP=settingsLP), P; nS=nS)
+    return ePortfolio(aEF, mu)
+end
+
+function ePortfolio(P::Problem, mu::Vector{Float64}; nS=Settings(P), settings=SettingsQP(P), settingsLP=SettingsLP(P))
+    aEF = eFrontier(ECL(P; numSettings=nS, settings=settings, settingsLP=settingsLP), P; nS=nS)
+    M = length(mu)
+    Z = similar(mu, M, P.N)
+    for k in 1:M
+        Z[k, :] = ePortfolio(aEF, mu[k])
+    end
+    return Z
+end
+
+
 function ePortfolio(aCL::Vector{sCL{T}}, P::Problem{T}, L::T) where {T}
     (; u, d, N) = P
     k = 1
@@ -153,26 +170,9 @@ function ePortfolio(aCL::Vector{sCL{T}}, P::Problem{T}, L::T) where {T}
 end
 
 function ePortfolio(P::Problem{T}; nS=Settings(P), settings=SettingsQP(P), settingsLP=SettingsLP(P), L::T=0.0) where {T}
-    aCL = EfficientFrontier.ECL(P; numSettings=nS, settings=settings, settingsLP=settingsLP)
+    aCL = ECL(P; numSettings=nS, settings=settings, settingsLP=settingsLP)
     return ePortfolio(aCL, P, L)
 end
-
-function ePortfolio(P::Problem, mu::Float64; nS=Settings(P))
-    aEF = eFrontier(ECL(P; numSettings=nS), P; nS=nS)
-    return ePortfolio(aEF, mu)
-end
-
-function ePortfolio(P::Problem, mu::Vector{Float64}; nS=Settings(P))
-    aEF = eFrontier(ECL(P; numSettings=nS), P; nS=nS)
-    M = length(mu)
-    Z = similar(mu, M, P.N)
-    for k in 1:M
-        Z[k, :] = ePortfolio(aEF, mu[k])
-    end
-    return Z
-end
-
-
 
 
 """
