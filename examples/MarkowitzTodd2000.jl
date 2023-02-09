@@ -2,16 +2,20 @@
 
 using EfficientFrontier
 
+#=
+   if length(filter((x) -> x == :Markowitz, names(Main, imported=true))) == 0
+      include("./Markowitz.jl")
+      using .Markowitz
+   end   
+   =#
 
 function main()
 
    # from  CLA-Data.csv https://github.com/mdengler/cla
    E, V = EfficientFrontier.EVdata(:Markowitz, false)
-
-   #EfficientFrontier
    N = length(E)
-   A = ones(1, N)
-   b = ones(1)
+   #A = ones(1, N)
+   #b = ones(1)
    d = zeros(N)
    d[1] = 0.1
    d[5] = 0.1
@@ -24,11 +28,8 @@ function main()
    G[2, 5:7] .= 1.0
 
    println("--- Markowitz and Todd (2000), chapter 13, pp.337 --- ")
+
    #=
-   if length(filter((x) -> x == :Markowitz, names(Main, imported=true))) == 0
-      include("./Markowitz.jl")
-      using .Markowitz
-   end
    m = markowitz(E, V, lower=d, upper=u)
    unit_sum(m)
    add_constraint(m, G[1,:], '<', g[1])
