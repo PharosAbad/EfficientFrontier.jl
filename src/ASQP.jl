@@ -604,7 +604,8 @@ function asQP(PS::Problem{T}; settingsLP=SettingsLP(PS), L::T=0.0) where {T}
     d1 = [ds; zeros(T, Ms)]
     u1 = [us; fill(Inf, Ms)]
 
-    f, x, q, B, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+    #f, x, q, B, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+    f, x, q, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
     if f > tol
         error("feasible region is empty")
     end
@@ -676,7 +677,8 @@ function asQP(PS::Problem{T}, mu::T; settingsLP=SettingsLP(PS)) where {T}
     d1 = [ds; zeros(T, Ms)]
     u1 = [us; fill(Inf, Ms)]
 
-    f, x, q, B, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+    #f, x, q, B, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+    f, x, q, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
     if f > tol
         error("feasible region is empty")
     end
@@ -717,6 +719,7 @@ function asCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settingsLP=
 end
 
 function getSx(x, P, nS)
+    #from  optimal solution directly. Hence, high accuracy needed
     (; u, d, G, g, N, J) = P    
     tolS = nS.tolS
 

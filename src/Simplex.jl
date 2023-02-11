@@ -56,7 +56,7 @@ q:    x[B]
 ```
 """
 function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
-    #B is always sorted. S in caller is change, compute invB and q=xB each step, switch Dantzig to Bland rule when iter > N 
+    #B is always sorted. B and S in caller is change, compute invB and q=xB each step, switch Dantzig to Bland rule when iter > N 
 
     T = typeof(c[1])
     N = length(c)
@@ -170,11 +170,11 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
         if l == -1  #flip the sate
             S[k] = UP
             x[k] = u[k]
-            q -= g0 * p
+            #q -= g0 * p
         elseif l == -2  #flip the sate
             S[k] = DN
             x[k] = d[k]
-            q -= g0 * p
+            #q -= g0 * p
         elseif l > 0
             m = l
             l = B[l]       #leaving index
@@ -182,15 +182,18 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
             F[l] = true
             B[m] = k
 
-            B = sort(B)
+            #B = sort(B)
+            sort!(B)
             invB = inv(A[:, B])
 
             S[k] = IN
             S[l] = Sl
             x[l] = Sl == DN ? d[l] : u[l]
             Y = invB * A[:, F]
-            q = invB * b - Y * x[F]
+            #q = invB * b - Y * x[F]
         end
+
+        q = invB * b - Y * x[F]
         h = c[F] - Y' * c[B]
         ih = S[F] .== DN
         h[ih] .= -h[ih]
@@ -205,7 +208,8 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
     iH = findall(F)[ih]
     x[B] = q
     #return q, B, invB, iH, c' * x
-    return c' * x, x, q, B, invB, iH
+    #return c' * x, x, q, B, invB, iH
+    return c' * x, x, q, invB, iH
 end
 
 
@@ -223,7 +227,7 @@ q:    x[B]
 ```
 """
 function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
-    #greatest improvement, B is always sorted. S in caller is change, compute invB and q=xB each step
+    #greatest improvement, B is always sorted. B and S in caller is change, compute invB and q=xB each step
     T = typeof(c[1])
     N = length(c)
     M = length(b)
@@ -331,11 +335,11 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
         if l == -1  #flip the sate
             S[k] = UP
             x[k] = u[k]
-            q -= gl * p
+            #q -= gl * p
         elseif l == -2  #flip the sate
             S[k] = DN
             x[k] = d[k]
-            q -= gl * p
+            #q -= gl * p
         elseif l > 0
             m = l
             l = B[l]       #leaving index
@@ -343,16 +347,18 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
             F[l] = true
             B[m] = k
 
-            B = sort(B)
+            #B = sort(B)
+            sort!(B)
             invB = inv(A[:, B])
 
             S[k] = IN
             S[l] = Sl
             x[l] = Sl == DN ? d[l] : u[l]
             Y = invB * A[:, F]
-            q = invB * b - Y * x[F]
+            #q = invB * b - Y * x[F]
         end
 
+        q = invB * b - Y * x[F]
         h = c[F] - Y' * c[B]
         ih = S[F] .== DN
         h[ih] .= -h[ih]
@@ -365,7 +371,8 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
     iH = findall(F)[ih]
     x[B] = q
     #return q, B, invB, iH, c' * x
-    return c' * x, x, q, B, invB, iH
+    #return c' * x, x, q, B, invB, iH
+    return c' * x, x, q, invB, iH
 end
 
 
@@ -414,9 +421,10 @@ function SimplexLP(PS::Problem{T}; settings=Settings(PS), min=true) where {T}
     d1 = [ds; zeros(T, Ms)]
     u1 = [us; fill(Inf, Ms)]
 
-    f, x, q, B, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+    #f, x, q, B, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+    f, x, q, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
     if f > tol
-        error("feasible region is empty")
+        error("empty feasible region")
     end
 
     #display("--- --- phase 2 --- ---")
@@ -426,7 +434,8 @@ function SimplexLP(PS::Problem{T}; settings=Settings(PS), min=true) where {T}
         Es = -Es
     end
     #f, x, q, B, invB, iH = solveLP(-Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
-    f, x, q, B, invB, iH = solveLP(Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
+    #f, x, q, B, invB, iH = solveLP(Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
+    f, x, q, invB, iH = solveLP(Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
     if !min
         f = -f
     end
@@ -630,6 +639,7 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=SettingsEF(PS), sett
 end
 
 
+
 function oneCL!(aCL::Vector{sCL{T}}, PS::Problem{T}, S0::Vector{Status}, iH; nS=SettingsEF(PS)) where {T}
     #enumerating the states in iH for S0
     (; u, N) = PS
@@ -719,6 +729,7 @@ function oneCL!(aCL::Vector{sCL{T}}, PS::Problem{T}, S0::Vector{Status}, iH; nS=
     return false
 end
 
+
 function LPcbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=SettingsEF(PS), settings=Settings(PS), settingsLP=Settings(PS)) where {T}
     #Simplex LP + combinations
     (; u, d, N, M, J) = PS
@@ -770,5 +781,6 @@ function LPcbCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=SettingsEF(PS), setting
     end
     return false
 end
+
 
 end

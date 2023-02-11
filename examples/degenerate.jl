@@ -25,7 +25,7 @@ function main()
     println("\n Weigths for the first 9 corner portfolios")
     display(aEF.Z[1:9, :])
     
-
+    println("\n Markowitz CLA:  starting ...")
     m = markowitz(E, V; upper=u)
     unit_sum(m) # total weight = 100%
     ts = @elapsed f = frontier(m)

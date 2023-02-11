@@ -224,7 +224,8 @@ function cla(C,mu,A,b,L,U,epsilon=1e-10,lambdaTarget=1e-6)
             end
         end
         changes = sort(changes,by=x->-x.lambda)
-        if length(changes) > 1 && changes[1].lambda == changes[2].lambda
+        #if length(changes) > 1 && changes[1].lambda == changes[2].lambda
+        if length(changes) > 1 && changes[1].lambda - changes[2].lambda < 2^-26 #lambdaTarget
             @warn "more than one variable change could be done, will continue but note that the degenerate case is not properly handled"
         end
         lambdaEold = lambdaE

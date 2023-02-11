@@ -233,7 +233,8 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
     I0 = Vector{Event{T}}(undef, 0)
     nL0 = length(LE0)
     if nL0 > 0
-        LE0 = sort(LE0, by=x -> x.L, rev=true)
+        #LE0 = sort(LE0, by=x -> x.L, rev=true)
+        sort!(LE0, by=x -> x.L, rev=true)
         ic0 = LE0[1]
         L0 = ic0.L
         I0 = [ic0]
@@ -247,7 +248,8 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
     I1 = Vector{Event{T}}(undef, 0)
     nL1 = length(LE1)
     if nL1 > 0
-        LE1 = sort(LE1, by=x -> x.L)
+        #LE1 = sort(LE1, by=x -> x.L)
+        sort!(LE1, by=x -> x.L)
         ic1 = LE1[1]
         L1 = ic1.L
         I1 = [ic1]
@@ -419,86 +421,7 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
     return true
 end
 
-function ECL!0(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), incL=false, settings=SettingsQP(PS), settingsLP=SettingsLP(PS)) where {T}
-    (; tol, tolNorm, tolS, muShft) = numSettings
-    N = PS.N
-    t = aCL[end]
-    S = copy(t.S)
-    f = Inf     #mean of HMFP
-    while true
-        #S = copy(t.S)
-        if incL
-            q = t.I1
-            if isempty(q)
-                break
-            end
-            for k in eachindex(q)
-                c = q[k]
-                From = c.From
-                id = c.id
-                if From == EO || From == OE
-                    id += N
-                end
-                S[id] = From
-            end
-        else
-            if t.L0 <= 0
-                break
-            end
-            q = t.I0
-            for k in eachindex(q)
-                c = q[k]
-                To = c.To
-                id = c.id
-                if To == EO || To == OE
-                    id += N
-                end
-                S[id] = To
-            end
-        end
 
-        bad, K = badK(S, PS, tolNorm)
-        if bad
-            if K != 0   #infeasible
-                break
-            end
-            #degenerated
-            mu = getMu(PS, t, incL)
-            sgn = -1.0 * (mu >= 0 ? 1 : -1) #going down
-            if incL
-                if isinf(f)
-                    f = getfield(SimplexLP(PS; settings=settingsLP, min=false), 4)
-                end
-                if abs(mu - f) < tol  #hit HMFP=HVEP
-                    break
-                end
-                sgn = -sgn    #going up
-            end
-            #mu = (mu == 0) ? sgn * muShft : mu * (muShft * sgn + 1)
-            #mu = (abs(mu) < muShft) ? sgn * muShft : ((abs(mu) < 1) ? mu + muShft * sgn  : mu * (muShft * sgn + 1)) 
-            #mu = (-1 <= mu <= 1) ? mu + sgn * muShft : mu * (muShft * sgn + 1)            
-            if mu < -1 || mu > 1
-                sgn *= mu
-            end
-            mu += sgn * muShft
-            xm, status = fPortfolio(PS, mu; settings=settings, check=false) #FP(mu=mu)
-            S = getS(xm.s, PS, tolS)
-        end
-
-        if computeCL!(aCL, S, PS, numSettings)
-            t = aCL[end]
-            if isinf(t.L1) || t.L0 <= 0
-                break
-            end
-        else
-            display(Int(S)')
-            error("Critical Line Not Finished")
-        end
-        S .= t.S
-    end
-    sort!(aCL, by=x -> x.L1, rev=true)
-    return true
-end
 
 function nextS(t, incL, N)
     S = copy(t.S)
@@ -679,7 +602,8 @@ compute the Critical Line Segments by Simplex method, for the highest expected r
 See also [`cbCL!`](@ref), [`Problem`](@ref), [`Settings`](@ref), [`SettingsQP`](@ref)
 """
 function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settingsLP=SettingsLP(PS), kwargs...) where {T}
-    S, iH, q, f = SimplexLP(PS; settings=settingsLP, min=false)  #HMFP (Highest Mean Frontier Portfolio), or HVEP (Highest Variance Efficient Portfolio), >=99.9% hit
+    #HMEP, HMFP (Highest Mean Frontier Portfolio), or HVEP (Highest Variance Efficient Portfolio), >=99.9% hit
+    S, iH, q, f = SimplexLP(PS; settings=settingsLP, min=false)
     if computeCL!(aCL, S, PS, nS)
         return true     #>=99.9% done
     end
@@ -695,7 +619,7 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
 end
 
 
-#using LightenQP
+
 """
 
         LightenCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsQP(PS), settingsLP=SettingsLP(PS)) where T
@@ -708,6 +632,8 @@ compute the Critical Line Segments by Simplex method, for the highest expected r
 See also [`cbCL!`](@ref), [`Problem`](@ref), [`Settings`](@ref), [`SettingsQP`](@ref)
 """
 function LightenCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsQP(PS), settingsLP=SettingsLP(PS)) where {T}
+    #using LightenQP
+
     S, iH, q, f = SimplexLP(PS; settings=settingsLP, min=false)  #HMFP (Highest Mean Frontier Portfolio), or HVEP (Highest Variance Efficient Portfolio), >=99.9% hit
     if computeCL!(aCL, S, PS, nS)
         return true
@@ -720,7 +646,9 @@ function LightenCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
     computeCL!(aCL, S, PS, nS)
 end
 
+
 function getS(Y, PS, tolS)
+    #from slack variables
     (; u, N, J) = PS
     iu = findall(u .< Inf)
     D = Y[(1:N).+J] .< tolS
@@ -738,3 +666,4 @@ function getS(Y, PS, tolS)
     end
     return S
 end
+
