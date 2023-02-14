@@ -317,7 +317,7 @@ function ECL(PS::Problem; init::Function=SimplexCL!, numSettings=Settings(PS), s
         error("Not able to find the first Critical Line")
     end
 
-    ECL!(aCL, PS; numSettings=numSettings, incL=true, settings=settings, settingsLP=settingsLP)
+    ECL!(aCL, PS; numSettings=numSettings, settings=settings, settingsLP=settingsLP, incL=true)
     ECL!(aCL, PS; numSettings=numSettings, settings=settings, settingsLP=settingsLP)
     return aCL
 end
@@ -329,6 +329,11 @@ function badK(S, PS, tolNorm)    #infeasible to compute CL
 
     Sv = @view S[1:N]
     F = (Sv .== IN)
+    K = sum(F)
+    if K == 0   #degenerated
+        return true, 0
+    end
+    
     B = .!F
     U = (Sv .== UP)
     Se = @view S[(N.+(1:J))]
@@ -346,11 +351,9 @@ function badK(S, PS, tolNorm)    #infeasible to compute CL
     else
         AE = AE[rb, :]
     end
-    K = sum(F)
+    
     if K >= size(AE, 1) #good
         return false, K
-    elseif K == 0   #degenerated
-        return true, 0
     else
         return true, -1    #infeasible
     end
