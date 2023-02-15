@@ -19,10 +19,12 @@ See also [`EfficientFrontier.ECL`](@ref), [`ePortfolio`](@ref), [`Problem`](@ref
 """
 function eFrontier(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {T}
     (; E, V, u, d, N, eE, eV) = PS
+    (; tolNorm, tolL) = nS
     nL = lastindex(aCL)
     W = trues(nL)
     for k in eachindex(aCL)
-        if norm(aCL[k].beta) < nS.tolNorm
+        t = aCL[k]
+        if norm(t.beta) < tolNorm || t.L1 -t.L0 < tolL  #removable
             W[k] = false
         end
     end
