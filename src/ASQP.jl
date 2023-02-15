@@ -563,9 +563,6 @@ function asQP(PS::Problem{T}; settingsLP=SettingsLP(PS), L::T=0.0) where {T}
     if isinf(L)
         min = L == Inf ? false : true
         mu = getfield(SimplexLP(PS; settings=settingsLP, min=min), 4)
-        #= if L==Inf 
-            mu = -mu
-        end =#
         return asQP(PS, mu; settingsLP=settingsLP)
     end
     
@@ -621,19 +618,6 @@ function asQP(PS::Problem{T}; settingsLP=SettingsLP(PS), L::T=0.0) where {T}
         qq = -L * E
     end
     return solveASQP(V, qq, Aq, bq, x)
-
-    #= if L == 0
-        qq = zeros(T, N)
-        return solveASQP(V, qq, Aq, bq, x)
-    end
-    if isfinite(L)
-        qq = -L * E
-        return solveASQP(V, qq, Aq, bq, x)
-    end
-
-    sgn = L == Inf ? -1 : 1
-    return solveASQP(zeros(T, N, N), sgn * E, Aq, bq, x)    #LP, not QP
-    =#
 end
 
 function asQP(PS::Problem{T}, mu::T; settingsLP=SettingsLP(PS)) where {T}
@@ -682,9 +666,7 @@ function asQP(PS::Problem{T}, mu::T; settingsLP=SettingsLP(PS)) where {T}
     if f > tol
         error("feasible region is empty")
     end
-
     x = x[1:N]
-
     iu = findall(u .< Inf)
     Aq = [A; -A; E'; -E'; G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]]
     bq = [b; -b; mu; -mu; g; -d; u[iu]]
@@ -693,28 +675,11 @@ function asQP(PS::Problem{T}, mu::T; settingsLP=SettingsLP(PS)) where {T}
 end
 
 function asCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settingsLP=SettingsLP(PS), kwargs...) where {T}
-    #=
-    (; u, d, G, g, N, J) = PS
-    (; tolS, muShft) = nS
-
-
-    Y = asQP(PS; settingsLP=settingsLP)   #GMVP
-
-    S = fill(IN, N + J)
-    Sv = @view S[1:N]
-    Sv[abs.(Y - d).<tolS] .= DN
-    Sv[abs.(Y - u).<tolS] .= UP
-
-    for m = 1:J
-        S[N+m] = abs(g[m] - G[m, :]' * Y) < tolS ? EO : OE
-    end =#
-
     #x, aS = asQP(PS; settingsLP=settingsLP)   #GMVP    
     #S = activeS(aS, PS) #if fully degenerated, using x to determine S may be more reliable
 
     x = asQP(PS; settingsLP=settingsLP)   #GMVP
     S = getSx(x, PS, nS)
-
     computeCL!(aCL, S, PS, nS)
 end
 

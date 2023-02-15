@@ -15,6 +15,7 @@ function main()
 
     E, V = EfficientFrontier.EVdata(:Ungil, false)
     E = [7.2 0.7 0.8 2.3 2.2 1.9 5.6 5.6 7.2 1.3 0.7 -0.1 4.1 7.2] # 3 assets share the highest expected return
+    E = vec(E)
 
     m = markowitz(E, V)
     unit_sum(m) # total weight = 100%

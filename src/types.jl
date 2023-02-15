@@ -82,11 +82,11 @@ sCL(args...) = sCL{Float64}(args...)
 
 """
 
-        Problem(E::T, V; u, d, G, g, A, b, equilibrate) where T
-        Problem(E::T, V, u; equilibrate) where T
-        Problem(E::T, V, u, d; equilibrate) where T
-        Problem(E::T, V, u, d, G, g; equilibrate) where T
-        Problem(E::T, V, u, d, G, g, A, b; equilibrate) where T
+        Problem(E::Vector{T}, V; u, d, G, g, A, b, equilibrate) where T
+        Problem(E::Vector{T}, V, u; equilibrate) where T
+        Problem(E::Vector{T}, V, u, d; equilibrate) where T
+        Problem(E::Vector{T}, V, u, d, G, g; equilibrate) where T
+        Problem(E::Vector{T}, V, u, d, G, g, A, b; equilibrate) where T
 
 Setup a Portfolio Selection model: for mean vector E and variance matrix V
 
@@ -136,27 +136,27 @@ struct Problem{T<:AbstractFloat}
     eV::T
 end
 
-function Problem(E, V;
+function Problem(E::Vector{T}, V;
     u=fill(Inf, length(E)),
     d=zeros(length(E)),
     G=ones(0, length(E)),
     g=ones(0),
     A=ones(1, length(E)),
     b=ones(1),
-    equilibrate=false)
+    equilibrate=false)  where T
 
-    FloatT = typeof(E).parameters[1]
+    #FloatT = typeof(E).parameters[1]
     N::Int32 = length(E)
     (N, N) == size(V) || throw(DimensionMismatch("incompatible dimension: V"))
     sum(abs.(E)) == 0 && error("mean vector == 0")
     sum(abs.(V)) == 0 && error("variance matrix == 0")
     Eq = copy(vec(E))     #make sure vector and a new copy
-    Vq = convert(Matrix{FloatT}, (V + V') / 2)   #make sure symmetric
-    #@assert det(Vq)>=-sqrt(eps(FloatT)) "variance matrix has negative determinant"
+    Vq = convert(Matrix{T}, (V + V') / 2)   #make sure symmetric
+    #@assert det(Vq)>=-sqrt(eps(T)) "variance matrix has negative determinant"
     @assert det(Vq) >= 0 "variance matrix has negative determinant"
     #REMARK: we do NOT convert Gz  ≤ g into Gz +s = g, to make sure V>0
-    eE::FloatT = one(FloatT)
-    eV::FloatT = one(FloatT)
+    eE::T = one(T)
+    eV::T = one(T)
     if equilibrate
         eE = maximum(abs.(Eq))   #>0
         eV = maximum(abs.(Vq))   #>0
@@ -197,13 +197,13 @@ function Problem(E, V;
     @assert sum(d) < 1 "the sum of downside/lower bound is greater than 1"
     @assert sum(u) > 1 "the sum of upside/higher bound is less than 1"
 
-    Problem{FloatT}(Eq, Vq,
-        convert(Vector{FloatT}, copy(vec(u))),
-        convert(Vector{FloatT}, copy(vec(d))),
-        convert(Matrix{FloatT}, copy(G)),   #make a copy, just in case it is modified somewhere
-        convert(Vector{FloatT}, copy(vec(g))),
-        convert(Matrix{FloatT}, copy(A)),
-        convert(Vector{FloatT}, copy(vec(b))), N, M, J, equilibrate, eE, eV)
+    Problem{T}(Eq, Vq,
+        convert(Vector{T}, copy(vec(u))),
+        convert(Vector{T}, copy(vec(d))),
+        convert(Matrix{T}, copy(G)),   #make a copy, just in case it is modified somewhere
+        convert(Vector{T}, copy(vec(g))),
+        convert(Matrix{T}, copy(A)),
+        convert(Vector{T}, copy(vec(b))), N, M, J, equilibrate, eE, eV)
 end
 
 Problem(E, V, u; equilibrate=false) = Problem(E, V; u=u, equilibrate=equilibrate)
@@ -212,8 +212,10 @@ Problem(E, V, u, d, G, g; equilibrate=false) = Problem(E, V; u=u, d=d, G=G, g=g,
 Problem(E, V, u, d, G, g, A, b; equilibrate=false) = Problem(E, V; u=u, d=d, G=G, g=g, A=A, b=b, equilibrate=equilibrate)
 
 
-function sCL(P::Problem)
-    Vector{sCL{typeof(P).parameters[1]}}(undef, 0)
+function sCL(P::Problem{T}) where {T}
+    #function sCL(P::Problem)
+    #Vector{sCL{typeof(P).parameters[1]}}(undef, 0)
+    Vector{sCL{T}}(undef, 0)
 end
 
 """
@@ -224,12 +226,12 @@ end
 
 kwargs are from the fields of Settings{T<:AbstractFloat} for Float64 and BigFloat
 
-            tol::T         #general scalar
-            tolNorm::T     #for norms
-            tolS::T        #for identifying S
-            tolL::T        #for L
-            tolG::T        #for Greeks (beta and gamma)
-            muShft::T      #shift the mu to (1 +/- muShft)*mu
+            tol::T         #2^-26 ≈ 1.5e-8  general scalar
+            tolNorm::T     #2^-26 ≈ 1.5e-8  for norms
+            tolS::T        #2^-26 ≈ 1.5e-8  for identifying S
+            tolL::T        #2^-26 ≈ 1.5e-8  for L
+            tolG::T        #2^-26 ≈ 1.5e-8  for Greeks (beta and gamma)
+            muShft::T      #2^-18 ≈ 3.8e-6  shift the mu to (1 +/- muShft)*mu
 
 """
 struct Settings{T<:AbstractFloat}

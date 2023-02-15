@@ -18,7 +18,7 @@ REMARK: writing the next basis as a product of the current basis times an easily
 
 kwargs are from the fields of Settings{T<:AbstractFloat} for Float64 and BigFloat
 
-            tol::T          #general scalar
+            tol::T          #2^-26 ≈ 1.5e-8  general scalar
             rule::Symbol    #rule for Simplex {:Dantzig, :maxImprovement}
 
 """
