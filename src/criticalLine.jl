@@ -615,11 +615,13 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
     #S = activeS(aS, PS)
 
     #asCL!  for the remaining <=0.1%
-    x = asQP(PS; settingsLP=settingsLP)   #GMVP
+    #= x = asQP(PS; settingsLP=settingsLP)   #GMVP
     S = getSx(x, PS, nS)
+    computeCL!(aCL, S, PS, nS)  =#
 
-    computeCL!(aCL, S, PS, nS)
+    asCL!(aCL, PS; nS=nS, settingsLP=settingsLP)    #for the remaining <=0.1%
 end
+
 
 
 
@@ -645,9 +647,10 @@ function LightenCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
     x, status = LightenQP.fPortfolio(OOQP(PS); settings=settings)   #GMVP, LVEP (Lowest Variance Efficient Portfolio),  may fail, leave it to computeCL!
     S = getS(x.s, PS, nS.tolS)
 
-
     computeCL!(aCL, S, PS, nS)
 end
+
+
 
 
 function getS(Y, PS, tolS)
@@ -669,4 +672,5 @@ function getS(Y, PS, tolS)
     end
     return S
 end
+
 

@@ -79,6 +79,14 @@ function OpSpQP(PS::Problem{T}, mu::T; settings=SettingsOS()) where {T}
 end
 
 
+"""
+
+        OpSpCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsOS(), kwargs...) where T
+
+compute the Critical Line Segments by OSQP (Operator Splitting Quadratic Program) numerical solver, at LMEP. Save the CL to aCL if done
+
+
+"""
 function OpSpCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsOS(), kwargs...) where {T}
     #function OpSpCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {T}
     (; u, d, G, g, N, J) = PS
@@ -107,7 +115,7 @@ function OpSpCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=
 
     y = OpSpQP(PS; settings=settings)   #relative less Accuracy, but still very good
     if y.info.status_val != 1   #SOLVED
-        error("Not able to find the LVEP (Lowest Variance Efficient Portfolio)")
+        error("Not able to find the LMEP (Lowest Mean Efficient Portfolio)")
     end
 
     Y = y.x
