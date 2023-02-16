@@ -91,13 +91,12 @@ sCL(args...) = sCL{Float64}(args...)
 Setup a Portfolio Selection model: for mean vector E and variance matrix V
 
 ```math
-	min     (1/2)z′Vz
-	s.t.    z′E = μ
-	        Az  = b     ∈ R^{M}
+	min     (1/2)z′Vz - L⋅z′E
+	s.t.    Az  = b     ∈ R^{M}
 	        Gz  ≤ g     ∈ R^{J}
 	        d ≤ z ≤ u   ∈ R^{N}
 ```
-Default values: u = +∞, d = 0, G = [], g = [], A = ones(1,N), b = [1], and equilibrate = false
+From L=+∞ to L=0. Default values: u = +∞, d = 0, G = [], g = [], A = ones(1,N), b = [1], and equilibrate = false
 
 # Example
 ```
@@ -116,7 +115,7 @@ Default values: u = +∞, d = 0, G = [], g = [], A = ones(1,N), b = [1], and equ
 
 See [`Documentation for EfficientFrontier.jl`](https://github.com/PharosAbad/EfficientFrontier.jl/wiki)
 
-See also [`EfficientFrontier.ECL`](@ref)
+See also [`EfficientFrontier.ECL`](@ref), [`eFrontier`](@ref), [`ePortfolio`](@ref)
 
 """
 struct Problem{T<:AbstractFloat}
@@ -213,8 +212,7 @@ Problem(E, V, u, d, G, g, A, b; equilibrate=false) = Problem(E, V; u=u, d=d, G=G
 
 
 function sCL(P::Problem{T}) where {T}
-    #function sCL(P::Problem)
-    #Vector{sCL{typeof(P).parameters[1]}}(undef, 0)
+    #function sCL(P::Problem)       #Vector{sCL{typeof(P).parameters[1]}}(undef, 0)
     Vector{sCL{T}}(undef, 0)
 end
 
@@ -290,9 +288,9 @@ Efficient Frontier, with fields:
 
 """
 struct sEF    #Efficient Frontier       Float64 is OK
-    Ap::Matrix{Float64}  # v=a₂μ²+a₁μ+a₀
-    mu::Vector{Float64} #higher mean
-    sgm::Vector{Float64}   #higher sigma
+    Ap::Matrix{Float64}     # v=a₂μ²+a₁μ+a₀
+    mu::Vector{Float64}     #higher mean
+    sgm::Vector{Float64}    #higher sigma
     Z::Matrix{Float64}
     ic::Vector{Int64}
 end
