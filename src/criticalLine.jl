@@ -423,6 +423,7 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
     sort!(aCL, by=x -> x.L1, rev=true)
     return true
 end
+#keep the argument `settings=SettingsQP`, we may use it for asQP in future
 
 
 
@@ -597,13 +598,43 @@ end
 
 compute the Critical Line Segments by Simplex method, for the highest expected return. Save the CL to aCL if done
     
-    settingsLP      : `SimplexLP.Settings`, for SimplexLP solver, we always first try the SimplexLP, and a chance of >=99.9% we find the critical line
-                       when the remaining <=0.1%  happens (when the corner portfolio is degenerated, or infinite many solutions to SimplexLP encounted),
+    settingsLP      : `SimplexLP.Settings`, for SimplexLP solver, we always first try the SimplexLP, and a chance of >=99.99% we find the critical line
+                       when the remaining <=0.01%  happens (when the corner portfolio is degenerated, or infinite many solutions to SimplexLP encounted),
                        we use ASQP, which use LP to obtain an initial point, so no SettingsQP needed
 
 
 See also [`cbCL!`](@ref), [`Problem`](@ref), [`Settings`](@ref), [`SettingsQP`](@ref)
 """
+function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settingsLP=SettingsLP(PS), kwargs...) where {T}
+    #HMEP, HMFP (Highest Mean Frontier Portfolio), or HVEP (Highest Variance Efficient Portfolio), >=99.9% hit
+    S, iH, q, f = SimplexLP(PS; settings=settingsLP, min=false)
+    #display((f,S))
+    if computeCL!(aCL, S, PS, nS)
+        return true     #>=99.9% done
+    end
+    
+    #test the LMFP (inefficient branch) >=0.09%
+    rP = deepcopy(PS)
+    E = rP.E
+    E .= -E #negative
+    S, iH, q, f = SimplexLP(rP; settings=settingsLP, min=false)
+    xCL = sCL(rP)
+    if computeCL!(xCL, S, rP, nS)
+        ECL!(xCL, rP; numSettings=nS, settingsLP=settingsLP)
+        #ECL!(xCL, rP; numSettings=nS, settings=settings, settingsLP=settingsLP)
+        t = xCL[end]
+        if t.L0 == 0    #GMVP
+            return computeCL!(aCL, t.S, PS, nS)
+            #return true
+        end
+    end
+
+    #for the remaining <=0.01%
+    asCL!(aCL, PS; nS=nS, settingsLP=settingsLP)
+    #display("asCL!, buy lottery")
+
+end
+#=
 function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settingsLP=SettingsLP(PS), kwargs...) where {T}
     #HMEP, HMFP (Highest Mean Frontier Portfolio), or HVEP (Highest Variance Efficient Portfolio), >=99.9% hit
     S, iH, q, f = SimplexLP(PS; settings=settingsLP, min=false)
@@ -621,7 +652,7 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
 
     asCL!(aCL, PS; nS=nS, settingsLP=settingsLP)    #for the remaining <=0.1%
 end
-
+=#
 
 
 
@@ -649,7 +680,6 @@ function LightenCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
 
     computeCL!(aCL, S, PS, nS)
 end
-
 
 
 
