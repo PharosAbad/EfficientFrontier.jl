@@ -45,7 +45,7 @@ function main()
 
     #---------- jls.xz
     #xzFile = Downloads.download("https://github.com/PharosAbad/PharosAbad.github.io/raw/master/files/sp500.jls.xz")
-    xzFile = "/tmp/sp500.jls.xz"
+    xzFile = joinpath(tempdir(),"sp500.jls.xz")  #xzFile = "/tmp/sp500.jls.xz"
     if !isfile(xzFile)
         Downloads.download("https://github.com/PharosAbad/PharosAbad.github.io/raw/master/files/sp500.jls.xz", xzFile)
     end
