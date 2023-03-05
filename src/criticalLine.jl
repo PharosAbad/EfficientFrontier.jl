@@ -74,7 +74,7 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
     https://scicomp.stackexchange.com/a/35645	best method is really application dependent
 
     VF = @view V[F, F]
-    #iV = inv(VF)   #ERROR: MethodError: no method matching factorize(::SubArray{Float64, 2, Matrix{Float64}, Tuple{Vector{Int64}, Vector{Int64}}, false})    
+    #iV = inv(VF)   #ERROR: MethodError: no method matching factorize(::SubArray{Float64, 2, Matrix{Float64}, Tuple{Vector{Int64}, Vector{Int64}}, false})
     iV = inv(Symmetric(VF))
     =#
     VBF = @view V[B, F]
@@ -82,7 +82,7 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
     c = VBF' * zB  #c=V_{IB}z_{B}
     mT = iV * AE'   #T=V_{I}⁻¹A_{I}′
     #C = inv(AE * mT)   #C=(A_{I}T)⁻¹
-    #C = inv(Symmetric(AE * mT))   #C=(A_{I}T)⁻¹    
+    #C = inv(Symmetric(AE * mT))   #C=(A_{I}T)⁻¹
     C = AE * mT
     C = (C + C') / 2
     C = inv(cholesky(C))
@@ -115,7 +115,7 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
     LE0 = Vector{Event{T}}(undef, 0)
     LE1 = Vector{Event{T}}(undef, 0)
     #ik = findall(F)
-    for k in eachindex(alpha)
+    @inbounds for k in eachindex(alpha)
         j = ik[k]
         t = beta[k]
         h = alpha[k]
@@ -141,7 +141,7 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
     end
 
     ib = findall(B)
-    for k in eachindex(gamma)
+    @inbounds for k in eachindex(gamma)
         j = ib[k]
         t = delta[k]
         h = gamma[k]
@@ -189,7 +189,7 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
         end
     end
 
-    #restore full ldE if refined    
+    #restore full ldE if refined
     JE = size(GE, 1)
     if JE > 0
         iE = zeros(Int, JE)
@@ -333,7 +333,7 @@ function badK(S, PS, tolNorm)    #infeasible to compute CL
     if K == 0   #degenerated
         return true, 0
     end
-    
+
     B = .!F
     U = (Sv .== UP)
     Se = @view S[(N.+(1:J))]
@@ -351,7 +351,7 @@ function badK(S, PS, tolNorm)    #infeasible to compute CL
     else
         AE = AE[rb, :]
     end
-    
+
     if K >= size(AE, 1) #good
         return false, K
     else
@@ -389,7 +389,7 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
                 break
             end
 
-            #degenerated            
+            #degenerated
             if incL
                 if isinf(f)
                     f = getfield(SimplexLP(PS; settings=settingsLP, min=false), 4)
@@ -597,7 +597,7 @@ end
         SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settingsLP=SettingsLP(PS)) where T
 
 compute the Critical Line Segments by Simplex method, for the highest expected return. Save the CL to aCL if done
-    
+
     settingsLP      : `SimplexLP.Settings`, for SimplexLP solver, we always first try the SimplexLP, and a chance of >=99.99% we find the critical line
                        when the remaining <=0.01%  happens (when the corner portfolio is degenerated, or infinite many solutions to SimplexLP encounted),
                        we use ASQP, which use LP to obtain an initial point, so no SettingsQP needed
@@ -612,7 +612,7 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
     if computeCL!(aCL, S, PS, nS)
         return true     #>=99.9% done
     end
-    
+
     #test the LMFP (inefficient branch) >=0.09%
     rP = deepcopy(PS)
     E = rP.E

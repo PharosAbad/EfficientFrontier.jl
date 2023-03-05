@@ -56,7 +56,7 @@ q:    x[B]
 ```
 """
 function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
-    #B is always sorted. B and S in caller is change, compute invB and q=xB each step, switch Dantzig to Bland rule when iter > N 
+    #B is always sorted. B and S in caller is change, compute invB and q=xB each step, switch Dantzig to Bland rule when iter > N
 
     T = typeof(c[1])
     N = length(c)
@@ -88,7 +88,7 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
     nH = length(iH)
     Bland = false
     loop = 0
-    while nH > 0
+    @inbounds while nH > 0
         #Dantzig rule or Bland rule
         #k0 = Bland ? 1 : argmax(hp)
         k0 = Bland ? 1 : argmax(hp ./ cA[iH]) #Largest-Distance Rule
@@ -255,7 +255,7 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
     ih = h .> tol
     iH = findall(F)[ih]
     nH = length(iH)
-    while nH > 0
+    @inbounds while nH > 0
         P = @view Y[:, ih]
         for n in 1:nH
             k = iH[n]
@@ -581,7 +581,7 @@ function SimplexQP!(mu, aCL::Vector{sCL{T}}, PS::Problem{T}; nS=SettingsEF(PS), 
     S = S1[1:Ns]
 
     #display((N0, B, S))
-    #=  Remark: if the only non-zero AV (artificial variable) is the one  for z′μ=μ, it may not be a problem. The KKT are hold, but for other mu value. 
+    #=  Remark: if the only non-zero AV (artificial variable) is the one  for z′μ=μ, it may not be a problem. The KKT are hold, but for other mu value.
     very slow, see N=263 in EF-dev-0108.jl
     WolfeLP! has a good chance only if mu is very close to the highest expected return, as in our case.  It doese not work 100%.
       It does not work for general QP. Since the K (IN, not on boundary) in a QP is variable, but LP has a fixed B (on boundary if degenerated).

@@ -22,7 +22,7 @@ function eFrontier(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {
     (; tolNorm, tolL) = nS
     nL = lastindex(aCL)
     W = trues(nL)
-    for k in eachindex(aCL)
+    @inbounds for k in eachindex(aCL)
         t = aCL[k]
         if norm(t.beta) < tolNorm || t.L1 -t.L0 < tolL  #removable
             W[k] = false
@@ -37,7 +37,7 @@ function eFrontier(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {
     Z = zeros(nP + 1, N)
     z1 = zeros(N)
 
-    for k in 1:nP
+    @inbounds for k in 1:nP
         t = aCL[idW[k]]
         S = @view t.S[1:N]
 
