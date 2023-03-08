@@ -1,4 +1,4 @@
-#__precompile__()
+__precompile__()
 
 "Entire Efficient Frontier by Status-Segment Method "
 module EfficientFrontier
@@ -32,15 +32,17 @@ using .ASQP
 export solveASQP, asQP, asCL!, getSx
 
 
-#=
+# #=
 Base.precompile(Tuple{Core.Typeof(ECL), Problem{Float64}})
 Base.precompile(Tuple{Core.Typeof(eFrontier), sCL{Float64}, Problem{Float64}})
 Base.precompile(Tuple{Core.Typeof(ePortfolio), sEF, Float64})
 Base.precompile(Tuple{Core.Typeof(ECL!), Vector{sCL{Float64}}, Problem{Float64}})
 Base.precompile(Tuple{Core.Typeof(computeCL!), Vector{sCL{Float64}}, Vector{Status}, Problem{Float64}, Settings{Float64}})
 Base.precompile(Tuple{Core.Typeof(SimplexCL!), Vector{sCL{Float64}}, Problem{Float64}})
-Base.precompile(Tuple{Core.Typeof(fPortfolio), Problem{Float64}, Float64})
-=#
+#Base.precompile(Tuple{Core.Typeof(fPortfolio), Problem{Float64}, Float64})
+Base.precompile(Tuple{Core.Typeof(SimplexLP), Problem{Float64}})
+#Base.precompile(Tuple{Core.Typeof(Simplex.cDantzigLP), Vector{Float64}, Matrix{Float64}, Vector{Float64}, Vector{Float64}, Vector{Float64}, Matrix{Float64}, Vector{Status}})
+# =#
 
 
 
@@ -52,5 +54,23 @@ P = Problem(E, V)
 aCL = ECL(P)
 aEF = eFrontier(aCL, P)
 nothing =#
+
+
+
+#=
+using SnoopPrecompile
+@precompile_setup begin
+    # Putting some things in `setup` can reduce the size of the
+    # precompile file and potentially make loading faster.
+    E, V = EVdata(:Abad, false)
+    @precompile_all_calls begin
+        # all calls in this block will be precompiled, regardless of whether
+        # they belong to your package or not (on Julia 1.8 and higher)
+        P = Problem(E, V)
+        aCL = ECL(P)
+        aEF = eFrontier(aCL, P)
+    end
+end
+=#
 
 end
