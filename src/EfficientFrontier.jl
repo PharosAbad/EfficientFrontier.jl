@@ -33,15 +33,15 @@ export solveASQP, asQP, asCL!, getSx
 
 
 # #=
-Base.precompile(Tuple{Core.Typeof(ECL), Problem{Float64}})
-Base.precompile(Tuple{Core.Typeof(eFrontier), sCL{Float64}, Problem{Float64}})
-Base.precompile(Tuple{Core.Typeof(ePortfolio), sEF, Float64})
-Base.precompile(Tuple{Core.Typeof(ECL!), Vector{sCL{Float64}}, Problem{Float64}})
-Base.precompile(Tuple{Core.Typeof(computeCL!), Vector{sCL{Float64}}, Vector{Status}, Problem{Float64}, Settings{Float64}})
-Base.precompile(Tuple{Core.Typeof(SimplexCL!), Vector{sCL{Float64}}, Problem{Float64}})
-#Base.precompile(Tuple{Core.Typeof(fPortfolio), Problem{Float64}, Float64})
-Base.precompile(Tuple{Core.Typeof(SimplexLP), Problem{Float64}})
-#Base.precompile(Tuple{Core.Typeof(Simplex.cDantzigLP), Vector{Float64}, Matrix{Float64}, Vector{Float64}, Vector{Float64}, Vector{Float64}, Matrix{Float64}, Vector{Status}})
+Base.precompile(Tuple{typeof(ECL), Problem{Float64}})
+Base.precompile(Tuple{typeof(SimplexCL!), Vector{sCL{Float64}}, Problem{Float64}})
+Base.precompile(Tuple{typeof(SimplexLP), Problem{Float64}})
+Base.precompile(Tuple{typeof(computeCL!), Vector{sCL{Float64}}, Vector{Status}, Problem{Float64}, Settings{Float64}})
+Base.precompile(Tuple{typeof(ECL!), Vector{sCL{Float64}}, Problem{Float64}})
+Base.precompile(Tuple{typeof(Simplex.cDantzigLP), Vector{Float64}, Matrix{Float64}, Vector{Float64}, Vector{Float64}, Vector{Float64}, Matrix{Float64}, Vector{Status}})
+Base.precompile(Tuple{typeof(eFrontier), Vector{sCL{Float64}}, Problem{Float64}})
+Base.precompile(Tuple{typeof(ePortfolio), sEF, Float64})
+#Base.precompile(Tuple{typeof(fPortfolio), Problem{Float64}, Float64})
 # =#
 
 
