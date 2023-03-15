@@ -33,6 +33,8 @@ export solveASQP, asQP, asCL!, getSx
 
 
 # #=
+#precompile(Tuple{Type{Problem{T} where T<:AbstractFloat}, Array{Float64, 1}, Array{Float64, 2}})
+#precompile(Tuple{Type{Problem{T} where T<:AbstractFloat}, Array{Float64, 1}, Array{Float64, 2}, Array{Float64, 1}})
 Base.precompile(Tuple{typeof(ECL), Problem{Float64}})
 Base.precompile(Tuple{typeof(SimplexCL!), Vector{sCL{Float64}}, Problem{Float64}})
 Base.precompile(Tuple{typeof(SimplexLP), Problem{Float64}})
@@ -57,20 +59,24 @@ nothing =#
 
 
 
-#=
+ #=
 using SnoopPrecompile
 @precompile_setup begin
     # Putting some things in `setup` can reduce the size of the
     # precompile file and potentially make loading faster.
     E, V = EVdata(:Abad, false)
+    u = fill(Inf, length(E))
     @precompile_all_calls begin
         # all calls in this block will be precompiled, regardless of whether
         # they belong to your package or not (on Julia 1.8 and higher)
         P = Problem(E, V)
+        Pc = Problem(E, V, u)
+        aCLc = sCL(P)
+        SimplexCL!(aCLc, P; nS=Settings(P), settings=SettingsQP(P), settingsLP=SettingsLP(P))
         aCL = ECL(P)
         aEF = eFrontier(aCL, P)
     end
 end
-=#
+ =#
 
 end

@@ -59,13 +59,13 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
         AB = AB[rb, :]
     end
     K = sum(F)
-    if K < size(AE, 1)    # <:  infeasible,  or =: no freedom
-        return false
+    if K < size(AE, 1)    # impossible
+        return false    # in our setting, size(AE, 1)>=1, hence skip K=0
     end
+    # K >= size(AE, 1)  since the feasible set is not empty
+
 
     EF = @view E[F]
-
-
     VF = @view V[F, F]
     iV = inv(cholesky(VF))  #make sure iV is symmetric
     #=
@@ -331,7 +331,7 @@ function badK(S, PS, tolNorm)    #infeasible to compute CL
     F = (Sv .== IN)
     K = sum(F)
     if K == 0   #degenerated
-        return true, 0
+        return true, 0  # Status `S` from nextS, no need to check feasiblity of equality constraints
     end
 
     B = .!F
@@ -355,7 +355,8 @@ function badK(S, PS, tolNorm)    #infeasible to compute CL
     if K >= size(AE, 1) #good
         return false, K
     else
-        return true, -1    #infeasible
+        @warn "Ignoring impossible: K < size(AE, 1)"
+        return true, -2    #impossible
     end
 end
 
@@ -385,7 +386,7 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
 
         bad, K = badK(S, PS, tolNorm)
         if bad
-            if K != 0 || !endCL  #infeasible
+            if K != 0 || !endCL  #infeasible or impossible if `bad && K != 0`
                 break
             end
 
@@ -702,5 +703,4 @@ function getS(Y, PS, tolS)
     end
     return S
 end
-
 
