@@ -95,7 +95,7 @@ function ClarabelLP(PS::Problem{T}; settings=SettingsCl(), min=true) where {T}
     iu = findall(u .< Inf)
     P = spzeros(T, N, N)
     #q = -E
-    #sgn = min == true ? 1 : -1    
+    #sgn = min == true ? 1 : -1
     q = min ? E : -E
     Ac = sparse([A; G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]])
     bc = [b; g; -d; u[iu]]
@@ -110,6 +110,26 @@ function ClarabelLP(PS::Problem{T}; settings=SettingsCl(), min=true) where {T}
     return x
 end
 
+
+function getS(Y, PS, tolS)
+    #from slack variables
+    (; u, N, J) = PS
+    iu = findall(u .< Inf)
+    D = Y[(1:N).+J] .< tolS
+    U = falses(N)
+    U[iu] = Y[(1:length(iu)).+(J+N)] .< tolS
+    S = fill(IN, N + J)
+    Sv = @view S[1:N]
+    Sv[D] .= DN
+    Sv[U] .= UP
+    if J > 0
+        Se = @view S[(1:J).+N]
+        Se .= EO
+        Og = Y[1:J] .> tolS
+        Se[Og] .= OE
+    end
+    return S
+end
 
 
 """
@@ -141,11 +161,12 @@ function ClarabelCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), setti
     end
 
     Y = y.s[PS.M+2:end]
-    S = EfficientFrontier.getS(Y, PS, nS.tolS)
+    #S = EfficientFrontier.getS(Y, PS, nS.tolS)
+    S = getS(Y, PS, nS.tolS)
 
 
     #=
-    # GMVP, fail to get correct S most of time. See https://github.com/oxfordcontrol/Clarabel.jl/issues/109 Corner Portfolio Blur 
+    # GMVP, fail to get correct S most of time. See https://github.com/oxfordcontrol/Clarabel.jl/issues/109 Corner Portfolio Blur
     y = ClarabelQP(PS; settings=settings)   #may fail, leave it to computeCL!
     #= if Int(y.status) != 1   #SOLVED
         error("Clarabel: Not able to find the Lowest Variance Efficient Portfolio")

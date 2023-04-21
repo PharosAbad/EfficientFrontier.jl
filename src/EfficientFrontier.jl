@@ -8,9 +8,11 @@ export computeCL!, ECL!, cbCL!, eFrontier, ePortfolio, mu2L, L2mu
 
 using LinearAlgebra, Combinatorics
 
+#=
 using LightenQP: LightenQP, solveOOQP
 import LightenQP: OOQP, fPortfolio #, Settings as SettingsQP
 export OOQP, solveOOQP, fPortfolio #, Solution   #from LightenQP
+=#
 
 include("./types.jl")
 
@@ -27,9 +29,15 @@ export SimplexLP #
 include("./EVdata.jl")
 
 
+#=
 include("./ASQP.jl")
 using .ASQP
 export solveASQP, asQP, asCL!, getSx
+=#
+
+include("./SSQP.jl")
+using .SSQP
+export solveQP, QP
 
 
 # #=

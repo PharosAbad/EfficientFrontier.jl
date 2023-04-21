@@ -193,7 +193,7 @@ function addConstraint!(F::NullspaceHessianLDL{T}, a::AbstractVector{T}) where {
     # Prevent F.U having zero columns
     F.U[end] = max(sqrt(abs(d_new)), F.indefinite_tolerance)
 
-    # Scale matrices so that diag(F.U) = ones(..) 
+    # Scale matrices so that diag(F.U) = ones(..)
     F.D.diag .= one(T)
     F.D.diag[end] *= sign(d_new)
 
@@ -443,7 +443,7 @@ end
 
 
 """
-        
+
         solveASQP(P::Matrix{T}, q::Vector{T}, A::Matrix{T}, b::Vector{T}, x::Vector{T}; maxIter::Int=77777, kwargs...) where T
 
 for quadratic programming problems: the initial feasible point can be obtained by performing Phase-I Simplex on the polyhedron Ax ≤ b
@@ -586,7 +586,7 @@ end
 
 
 """
-        
+
         asQP(PS::Problem{T}; settingsLP=SettingsLP(PS), L::T=0.0) where T       : L version
         asQP(PS::Problem{T}, mu::T; settingsLP=SettingsLP(PS)) where T          : mu version
 
@@ -616,8 +616,8 @@ function asQP(PS::Problem{T}; settingsLP=SettingsLP(PS), L::T=0.0) where {T}
     #An initial feasible point by performing Phase-I Simplex on the polyhedron
     Ms = M + J  #convert Gz<=g to equality
     Ns = N + J
-    M1 = Ms + Ns
-    S = fill(DN, M1)
+    N1 = Ms + Ns
+    S = fill(DN, N1)
     B = collect(Ns .+ (1:Ms))
     S[B] .= IN
 
@@ -632,7 +632,8 @@ function asQP(PS::Problem{T}; settingsLP=SettingsLP(PS), L::T=0.0) where {T}
     for j in 1:Ms
         invB[j, j] = bs[j] >= q[j] ? one(T) : -one(T)
     end
-    q = abs.(As * ds - bs)
+    #q = abs.(As * ds - bs)
+    q = abs.(q - bs)
     c1 = [zeros(T, Ns); fill(one(T), Ms)]   #我的　模型　是　min
     A1 = [As invB]
     b1 = bs
@@ -675,8 +676,8 @@ function asQP(PS::Problem{T}, mu::T; settingsLP=SettingsLP(PS)) where {T}
     #An initial feasible point by performing Phase-I Simplex on the polyhedron
     Ms = M + 1 + J  #convert Gz<=g to equality
     Ns = N + J
-    M1 = Ms + Ns
-    S = fill(DN, M1)
+    N1 = Ms + Ns
+    S = fill(DN, N1)
     B = collect(Ns .+ (1:Ms))
     S[B] .= IN
 
@@ -692,7 +693,8 @@ function asQP(PS::Problem{T}, mu::T; settingsLP=SettingsLP(PS)) where {T}
     for j in 1:Ms
         invB[j, j] = bs[j] >= q[j] ? one(T) : -one(T)
     end
-    q = abs.(As * ds - bs)
+    #q = abs.(As * ds - bs)
+    q = abs.(q - bs)
     c1 = [zeros(T, Ns); fill(one(T), Ms)]   #我的　模型　是　min
     A1 = [As invB]
     b1 = bs
@@ -723,7 +725,7 @@ compute the Critical Line Segments by an inertia-controlling active-set numerica
 See also [`asQP`](@ref), [`sCL`](@ref), [`Problem`](@ref), [`Settings`](@ref), [`SettingsLP`](@ref)
 """
 function asCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settingsLP=SettingsLP(PS), kwargs...) where {T}
-    #x, aS = asQP(PS; settingsLP=settingsLP)   #GMVP    
+    #x, aS = asQP(PS; settingsLP=settingsLP)   #GMVP
     #S = activeS(aS, PS) #if fully degenerated, using x to determine S may be more reliable
 
     x = asQP(PS; settingsLP=settingsLP)   #GMVP

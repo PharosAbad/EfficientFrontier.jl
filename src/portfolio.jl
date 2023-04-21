@@ -177,41 +177,6 @@ function ePortfolio(P::Problem{T}; nS=Settings(P), settings=SettingsQP(P), setti
 end
 
 
-"""
-
-        x         = fPortfolio(P::Problem; settingsLP=settingsLP, L=0)              # active-set numerical solver
-        x, status = fPortfolio(P::Problem, mu; settings=SettingsQP, check=true)     # `LightenQP`'s numerical solver
-
-compute frontier portfolio at given `L` or `mu`.
-
-    L=-Inf          :FP(L=-Inf), LMFP (Lowest Mean Frontier Portfolio)
-    L=+Inf          :FP(L=+Inf), HMFP (Highest Mean Frontier Portfolio) == HVEP (Highest Variance Efficient Portfolio) == HMEP (Highest Mean Efficient Portfolio)
-    L=L0            :FP(L=L0), the frontier (minimum variance) portfolio at L=L0. L=0, LVEP (Lowest Variance Efficient Portfolio, also called GMVP, Global Minimum Variance Portfolio)
-    mu=-Inf         :FP(L=-Inf), LMFP (Lowest Mean Frontier Portfolio)
-    mu=+Inf         :FP(L=+Inf), HMFP (Highest Mean Frontier Portfolio) == HVEP (Highest Variance Efficient Portfolio) == HMEP (Highest Mean Efficient Portfolio)
-    mu=mu0          :FP(mu=mu0), the frontier (minimum variance) portfolio at mu=mu0
-
-if `check=false`, we do not check if mu is feasible or not (between lowest and highest mean)
-
-See also [`ePortfolio`](@ref), [`Problem`](@ref), [`SettingsQP`](@ref), [`LightenQP.fPortfolio`](@ref)
-
-"""
-function fPortfolio(P::Problem{T}; settingsLP=SettingsLP(P), L::T=0.0) where {T}
-    asQP(P; settingsLP=settingsLP, L=L)
-end
-
-#=
-function fPortfolio(P::Problem{T}; settings=SettingsQP(P), L=0.0) where {T}
-    Q = OOQP(P)
-    fPortfolio(Q; settings=settings, L=L)
-end =#
-
-function fPortfolio(P::Problem{T}, mu::T; settings=SettingsQP(P), check=true) where {T}
-    Q = OOQP(P)
-    fPortfolio(Q, mu; settings=settings, check=check)
-end
-
-
 
 
 """

@@ -135,17 +135,17 @@ struct Problem{T<:AbstractFloat}
     eV::T
 end
 
-function Problem(E::Vector{T}, V;
-    u=fill(Inf, length(E)),
-    d=zeros(length(E)),
-    G=ones(0, length(E)),
+function Problem(E::Vector{T}, V; N=length(E),
+    u=fill(Inf, N),
+    d=zeros(N),
+    G=ones(0, N),
     g=ones(0),
-    A=ones(1, length(E)),
+    A=ones(1, N),
     b=ones(1),
-    equilibrate=false)  where T
+    equilibrate=false) where {T}
 
     #FloatT = typeof(E).parameters[1]
-    N::Int32 = length(E)
+    #N::Int32 = length(E)
     (N, N) == size(V) || throw(DimensionMismatch("incompatible dimension: V"))
     sum(abs.(E)) == 0 && error("mean vector == 0")
     sum(abs.(V)) == 0 && error("variance matrix == 0")
@@ -173,6 +173,12 @@ function Problem(E::Vector{T}, V;
     #norm(A[1,:] .- b[1]) == 0 || error("First equality constraint must be 1'z = 1")
     sum(abs.(A[1, :] .- b[1])) == 0 || error("First equality constraint must be 1'z = 1")
 
+    #check feasibility of Ax=b
+    rb = rank([A b])
+    @assert rb == rank(A) "infeasible: Ax=b"
+    @assert rb == length(getRows(A)) "redundant rows in Ax=b"
+
+
     #d[isinf.(d)] .= -1.0    #replace -Inf in lower bound by -1.0
     id = findall(isinf.(d))
     if length(id) > 0
@@ -180,25 +186,31 @@ function Problem(E::Vector{T}, V;
         d[id] .= -1.0
     end
 
+
     iu = u .< d
     #u[iu] .= d[iu]   #make sure u >= d
     if sum(iu) > 0
-        @warn "reset the elements where u < d  to u = d, to make sure u >= d"
+        @warn "swap the elements where u < d, to make sure u > d"
+        t = u[iu]
         u[iu] .= d[iu]
+        d[iu] .= t
     end
     iu = u .< 0
-    #u[iu] .= 0  #make sure u >= 0
     if sum(iu) > 0
         @warn "reset the elements where u < 0  to u = 0, to make sure u >= 0"
         u[iu] .= 0.0
     end
 
+    @assert !any(d .== u) "downside bound == upper bound detected"
+
     @assert sum(d) < 1 "the sum of downside/lower bound is greater than 1"
     @assert sum(u) > 1 "the sum of upside/higher bound is less than 1"
 
+    #@assert J > 0 || any(isfinite.(d)) || any(isfinite.(u)) "no any inequalities or bounds"   #we have reset d to be finite if not
+
     Problem{T}(Eq, Vq,
-        convert(Vector{T}, copy(vec(u))),
-        convert(Vector{T}, copy(vec(d))),
+        convert(Vector{T}, copy(u)),
+        convert(Vector{T}, copy(d)),
         convert(Matrix{T}, copy(G)),   #make a copy, just in case it is modified somewhere
         convert(Vector{T}, copy(vec(g))),
         convert(Matrix{T}, copy(A)),
@@ -295,7 +307,7 @@ struct sEF    #Efficient Frontier       Float64 is OK
     ic::Vector{Int64}
 end
 
-
+#=
 """
 
         OOQP(P::Problem)
@@ -314,8 +326,11 @@ function OOQP(P::Problem{T}) where {T}
     L = J + N + length(iu)
     OOQP{T}(V, A, C, E, b, gq, N, M, L)
 end
+=#
 
 
+
+#=
 """
 
     SettingsQP(P::Problem; kwargs...)
@@ -329,6 +344,21 @@ function SettingsQP(P::Problem{T}; kwargs...) where {T}
     LightenQP.Settings{T}(; kwargs...)
     #SettingsQP{T}(; kwargs...)
 end
+=#
+
+"""
+
+    SettingsQP(P::Problem; kwargs...)
+
+Settings for `SSQP`'s Status Switching solver Settings
+
+See also  [`SSQP.Settings`](@ref)
+
+"""
+function SettingsQP(P::Problem{T}; kwargs...) where {T}
+    SSQP.Settings{T}(; kwargs...)
+end
+
 
 
 """
