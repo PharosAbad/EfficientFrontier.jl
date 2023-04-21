@@ -1,5 +1,9 @@
-#When there is an upper bound, we may use the `Clarabel.jl` (an interior point numerical solver) to find a CL
-# v1.0  the default Simplex method is the best. Faster speed and less resource than Clarabel
+#=
+When there is an upper bound, to find a CL, we may use
+* `Clarabel.jl`:    an interior point numerical solver
+* `ASQP.jl`:        an inertia-controlling active-set solver
+* since v1.0  the default Simplex method is the best. Faster speed and best accuracy
+=#
 
 # S&P 500 data, the Covariance matrix is not positive define
 #https://gitlab.math.ethz.ch/maechler/CLA/-/raw/master/data/muS.sp500.rda
@@ -14,6 +18,11 @@ end
 if length(filter((x) -> x == :uClarabel, names(Main, imported=true))) == 0
     include("./uClarabel.jl")
     using .uClarabel
+end
+
+if length(filter((x) -> x == :ASQP, names(Main, imported=true))) == 0
+    include("./ASQP.jl")
+    using .ASQP
 end
 
 
@@ -91,6 +100,10 @@ function main()
     aEF = eFrontier(aCL, Pu)
     println("Status-Segment Method:  ", ts, "  seconds")    #0.061639485  seconds
     display(aCLu[7].S == aCL[7].S)
+
+    println("\n--- Status-Segment Method: init by `asCL!`  ---\n")
+    ts = @elapsed aCLa = EfficientFrontier.ECL(Pu; init=asCL!)
+    println("Status-Segment Method:  ", ts, "  seconds")
 
 end
 
