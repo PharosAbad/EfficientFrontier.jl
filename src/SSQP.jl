@@ -12,13 +12,23 @@ export solveQP, QP
 
 """
 
+        QP(V::Matrix{T}; q, u, d, G, g, A, b) where T
+        QP(P::Problem{T}, L::T) where T
+        QP(mu::T, P::Problem{T}) where T
 
-min   (1/2)z′Vz+q′z
-s.t.   Az=b ∈ R^{M}
-       Gz≤g ∈ R^{J}
-       d≤z≤u ∈ R^{N}
+Setup a quadratic programming model:
 
-some variable may be free, say -Inf < zi < +Inf
+```math
+    min   (1/2)z′Vz+q′z
+    s.t.   Az=b ∈ R^{M}
+           Gz≤g ∈ R^{J}
+           d≤z≤u ∈ R^{N}
+```
+
+some variable may be free, say -Inf < zi < +Inf. No equalities if M=0. Default values: q = 0, u = +∞, d = 0, G = [], g = [], A = ones(1,N), b = [1]
+
+See also [`Problem`](@ref), [`solveQP`](@ref)
+
 """
 struct QP{T<:AbstractFloat}    #standard QP, or structure of QP
     V::Matrix{T}
@@ -102,6 +112,22 @@ function SettingsLP(Q::QP{T}; kwargs...) where {T}
     Simplex.Settings{T}(; kwargs...)
 end
 
+
+"""
+
+        Settings(Q::QP{T}; kwargs...)        The default Settings to given quadratic programming Q
+        Settings(; kwargs...)       The default Settings is set by Float64 type
+        Settings{T<:AbstractFloat}(; kwargs...)
+
+kwargs are from the fields of Settings{T<:AbstractFloat} for Float64 and BigFloat
+
+            maxIter::Int64      #7777
+            tol::T              #2^-26 ≈ 1.5e-8  general scalar
+            tolNorm::T          #2^-26 ≈ 1.5e-8  for norms
+
+
+See also [`QP`](@ref), [`solveQP`](@ref)
+"""
 struct Settings{T<:AbstractFloat}
     maxIter::Int64  #7777
     tol::T          #2^-26
@@ -164,23 +190,6 @@ function getRows(A::Matrix{T}, tolNorm=sqrt(eps(T))) where {T}
         end
     end
     return findall(R)
-end
-
-
-function solveQP(V::Matrix{T}, q::Vector{T}, A::Matrix{T}, b::Vector{T}, G::Matrix{T}, g::Vector{T},
-    d::Vector{T}, u::Vector{T}; settings=Settings{T}(), settingsLP=Simplex.Settings{T}()) where {T}
-
-    #N::Int32 = length(q)
-    N = length(q)
-    M = length(b)
-    J = length(g)
-    Q = QP(V, A, G, q, b, g, d, u, N, M, J)
-    solveQP(Q; settings=settings, settingsLP=settingsLP)
-end
-
-function solveQP(Q::QP{T}; settings=Settings(Q), settingsLP=SettingsLP(Q)) where {T}
-    S, x0 = initSSQP(Q, settingsLP)
-    solveQP(Q, S, x0; settings=settings)
 end
 
 
@@ -248,7 +257,7 @@ function aStep!(p, z::Vector{T}, S, F, Og, alpha, G, g, d, u, fu, fd, N, J, tol)
 
 end
 
-function KKTchk!(S, B, Eg, gamma, alphaL, GE, idAE, ra, M, tol::T) where {T}
+function KKTchk!(S, F, B, Eg, gamma, alphaL, AE, GE, idAE, ra, N, M, tol::T) where {T}
     ib = findall(B)
     Li = Vector{Event{T}}(undef, 0)
     for k in eachindex(gamma)
@@ -302,9 +311,49 @@ function KKTchk!(S, B, Eg, gamma, alphaL, GE, idAE, ra, M, tol::T) where {T}
     end
 end
 
+"""
+
+        solveQP(Q::QP{T}; settings, settingsLP) where T
+        solveQP(V::Matrix{T}, q::Vector{T}, A, b, G, g, d, u; settings, settingsLP) where T
+        solveQP(Q::QP{T}, S::Vector{Status}, x0; settings) where T
+
+for quadratic programming problems: the initial feasible point (S, x0) if given,  can be obtained from SimplexLP
+
+```math
+    min   (1/2)z′Vz+q′z
+    s.t.   Az=b ∈ R^{M}
+           Gz≤g ∈ R^{J}
+           d≤z≤u ∈ R^{N}
+```
+
+Outputs
+
+    z               : solution,  N x 1 vector
+    S               : Vector{Status}, (N+J)x1
+    status          : > 0 if successful (=iter_count), 0 if infeasibility detected, < 0 if not converged (=-iter_count)
+
+See also [`QP`](@ref), [`EfficientFrontier.Simplex.SimplexLP`](@ref), [`EfficientFrontier.SSQP.Settings`](@ref), [`EfficientFrontier.Simplex.Settings`](@ref), [`initQP`](@ref), [`initSSQP`](@ref)
+"""
+function solveQP(V::Matrix{T}, q::Vector{T}, A::Matrix{T}, b::Vector{T}, G::Matrix{T}, g::Vector{T},
+    d::Vector{T}, u::Vector{T}; settings=Settings{T}(), settingsLP=Simplex.Settings{T}()) where {T}
+
+    #N::Int32 = length(q)
+    N = length(q)
+    M = length(b)
+    J = length(g)
+    Q = QP(V, A, G, q, b, g, d, u, N, M, J)
+    solveQP(Q; settings=settings, settingsLP=settingsLP)
+end
+
+function solveQP(Q::QP{T}; settings=Settings(Q), settingsLP=SettingsLP(Q)) where {T}
+    S, x0 = initSSQP(Q, settingsLP)
+    solveQP(Q, S, x0; settings=settings)
+end
+
+
 function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
-#function solveQP(Q::QP{T}; settings=Settings(Q), settingsLP=SettingsLP(Q), x0=zeros(T,0), S=fill(DN, 0)) where {T}
-#function solveQP(Q::QP{T}; settings=Settings(Q), settingsLP=SettingsLP(Q), x0=nothing, S=nothing) where {T}
+    #function solveQP(Q::QP{T}; settings=Settings(Q), settingsLP=SettingsLP(Q), x0=zeros(T,0), S=fill(DN, 0)) where {T}
+    #function solveQP(Q::QP{T}; settings=Settings(Q), settingsLP=SettingsLP(Q), x0=nothing, S=nothing) where {T}
     #function solveQP(Q::QP{T}; settings=Settings(Q), settingsLP=SettingsLP(Q)) where {T}
     #function solveQP(Q::QP{T}; settings=Settings{T}(), settingsLP=SettingsLP(Q)) where {T}
     (; V, A, G, q, b, g, d, u, N, M, J) = Q
@@ -391,16 +440,21 @@ function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
         alphaL = -(TC' * c + C * bE)
         gamma = VBF * alpha + V[B, B] * zB + q[B] + AB' * alphaL
         #z[F] = alpha
-        status = KKTchk!(S, B, Eg, gamma, alphaL, GE, idAE, ra, M, tol)
+        status = KKTchk!(S, F, B, Eg, gamma, alphaL, AE, GE, idAE, ra, N, M, tol)
         if status > 0
             return z, S, iter
         end
     end
 end
 
+"""
+        S, x0 = initSSQP(Q::QP{T}, settingsLP)
 
+
+do not handle free variables such that -∞ < x < +∞. OK for EfficientFrontier
+"""
 function initSSQP(Q::QP{T}, settingsLP) where {T}
-    (; A, G, q, b, g, d, u, N, M, J) = Q
+    (; A, G, b, g, d, u, N, M, J) = Q
     (; tol, rule) = settingsLP
 
     solveLP = cDantzigLP
@@ -447,6 +501,101 @@ function initSSQP(Q::QP{T}, settingsLP) where {T}
     end
     return S, x0
 
+end
+
+"""
+        S, x0 = initLP(Q::QP{T}, settingsLP)
+
+performing Phase-I Simplex on the polyhedron {Az=b, Gz≤g, d≤z≤u} to find an initial feasible point
+allowing free variables such that -∞ < z < +∞
+"""
+function initQP(Q::QP{T}, settingsLP) where {T}
+    #An initial feasible point by performing Phase-I Simplex on the polyhedron
+    (; A, G, b, g, d, u, N, M, J) = Q
+    (; tol, rule) = settingsLP
+
+    solveLP = cDantzigLP
+    if rule == :maxImprovement
+        solveLP = maxImprvLP
+    end
+
+    #convert free variable: -∞ < x < +∞
+    fu = u .== Inf   #no upper bound
+    fd = d .== -Inf   #no lower bound
+    fv = fu .&& fd  #free variable
+    iv = findall(fv)
+    n = length(iv)
+    id = findall(fd .&& .!fv)   # (-∞, u]
+
+    #add slack variables for Gz<=g , and 2nd part of free variables
+    M0 = M + J
+    N0 = N + J + n
+    A0 = [A zeros(T, M, J) -A[:, iv]
+        G Matrix{T}(I, J, J) -G[:, iv]]
+    b0 = [b; g]
+    d0 = [d; zeros(T, J + n)]
+    u0 = [u; fill(Inf, J + n)]
+
+
+    #(-∞, +∞)  -> two copy of [0, +∞)
+    d0[iv] .= 0     #the 1st part of free variable
+    #u0[iv] .= Inf
+
+    #(-∞, u]  -> [-u, +∞)
+    d0[id] .= -u0[id]
+    u0[id] .= Inf
+    A0[:, id] .= -A0[:, id]
+
+    N1 = M0 + N0
+    S = fill(DN, N1)
+    B = collect(N0 .+ (1:M0))
+    S[B] .= IN
+
+    invB = Matrix{T}(I, M0, M0)
+    q = A0 * d0
+    for j in 1:M0
+        invB[j, j] = b0[j] >= q[j] ? one(T) : -one(T)
+    end
+    q = abs.(q - b0)
+    c1 = [zeros(T, N0); fill(one(T), M0)]   #我的　模型　是　min
+    A1 = [A0 invB]
+    b1 = b0
+    d1 = [d0; zeros(T, M0)]
+    u1 = [u0; fill(Inf, M0)]
+
+
+    #f, x, _q, _invB, _iH = EfficientFrontier.Simplex.cDantzigLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+    f, x0, _q, _invB, _iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+
+    if f > tol
+    #if abs(f) > tol
+        #display(f)
+        error("feasible region is empty")
+    end
+
+    x = x0[1:N]
+    S = S[1:N+J]
+
+    for k in N+1:N+J    #inequalities
+        S[k] = S[k] == IN ? OE : EO
+    end
+
+    if n > 0    #free variable
+        x[iv] .-= x0[N+J+1:N+J+n]
+        S[iv] .= IN
+    end
+
+    m = length(id)
+    if m > 0   # flip u d
+        x[id] = -x[id]
+        for k in 1:m
+            #S[k] = S[k] == DN ? UP : DN
+            if S[k] == DN
+                S[k] == UP
+            end
+        end
+    end
+    return S, x
 end
 
 end

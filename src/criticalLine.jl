@@ -459,8 +459,6 @@ Return value: true if done
 
 """
 function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), incL=false, settings=SettingsQP(PS), settingsLP=SettingsLP(PS)) where {T}
-    #function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), incL=false, settings=SettingsQP(PS), settingsLP=SettingsLP(PS), endCL=true, f=Inf) where {T}
-    #tolNorm = numSettings.tolNorm
     (; tol, tolNorm) = numSettings
     N = PS.N
     t = aCL[end]
@@ -482,7 +480,7 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
             end
 
             #degenerated
-            if incL #dont go if hit HMFP
+            if incL #dont go up if hit HMFP
                 f = getfield(SimplexLP(PS; settings=settingsLP, min=false), 4)
                 mu = getMu(PS, t, incL)
                 if abs(mu - f) < tol  #hit HMFP=HVEP
@@ -490,25 +488,6 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
                 end
             end
             f, S = joinCL(PS, S; incL=incL, settingsLP=settingsLP)
-
-            #= if incL
-                if isinf(f)
-                    f = getfield(SimplexLP(PS; settings=settingsLP, min=false), 4)
-                end
-                mu = getMu(PS, t, incL)
-                if abs(mu - f) < numSettings.tol  #hit HMFP=HVEP
-                    break
-                end
-            end
-            L1 = incL ? Inf : t.L0 / 2
-            L0 = incL ? t.L1 * 2 : 0
-            p = sCL{T}(Vector{Status}(undef, 0), 0, L1, Vector{Event{T}}(undef, 0), L0, Vector{Event{T}}(undef, 0), Vector{T}(undef, 0), Vector{T}(undef, 0))
-            #p =  sCL(PS)
-            #push!(p, sCL{T}(Vector{Status}(undef, 0), 0, L1, Vector{Event{T}}(undef, 0), L0, Vector{Event{T}}(undef, 0), Vector{T}(undef, 0), Vector{T}(undef, 0)))
-
-            p = adjoinCL(p, t, S, incL, PS, numSettings, settings, settingsLP, f)
-            S .= p.S    =#
-
         end
 
         if computeCL!(aCL, S, PS, numSettings)
@@ -557,41 +536,6 @@ function nextS(t, incL, N)
     return S
 end
 
-#=
-function adjoinCL(p, t, S, incL, PS, nS, settings, settingsLP, f)
-    L1 = incL ? p.L0 : t.L0
-    L0 = incL ? t.L1 : p.L1
-    L = (L1 + L0) / 2
-    xS = copy(S)
-    while xS == S   #in the region of degenerated
-        x = asQP(PS; settingsLP=settingsLP, L=L)
-        xS = getSx(x, PS, nS)
-        K = sum(xS .== IN)
-        if K > 0
-            break
-        end
-        #now K = 0
-        if xS != S   #hit another degenerated
-            xS = copy(S)
-            L1 = incL ? L : L1  #move in, go L close to t
-            L0 = incL ? L0 : L
-        else    #K=0 && xS == S, still in the region of degenerated
-            L1 = incL ? 2 * L1 : L      #move out, go L away from t
-            L0 = incL ? L : 0.5 * L0
-        end
-        L = (L1 + L0) / 2
-    end
-    xCL = sCL(PS)
-    computeCL!(xCL, xS, PS, nS)
-    ECL!(xCL, PS; numSettings=nS, settings=settings, settingsLP=settingsLP, incL=!incL, endCL=false, f=f)
-    p = incL ? xCL[end] : xCL[1]
-    xS = nextS(p, !incL, PS.N)
-    if xS != S      # not connected
-        p = adjoinCL(p, t, S, incL, PS, nS, settings, settingsLP, f)
-    end
-    return p
-end
-=#
 
 function getMu(PS::Problem{T}, t, incL) where {T}
     (; E, u, d, N) = PS
@@ -741,7 +685,7 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
             #return computeCL!(aCL, S, PS, nS)
         end
     else    #for the remaining <=0.01%
-        #display("asCL!, buy lottery")
+        #display("QP invited, buy lottery")
 
         # try SSQP on μ_{H}
         #Q = QP(f - muShft, PS)
@@ -761,6 +705,3 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
     end
     return computeCL!(aCL, S, PS, nS)
 end
-
-
-
