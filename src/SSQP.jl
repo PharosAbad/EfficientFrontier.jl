@@ -29,12 +29,12 @@ struct QP{T<:AbstractFloat}    #standard QP, or structure of QP
     g::Vector{T}
     d::Vector{T}
     u::Vector{T}
-    N::Int32
-    M::Int32
-    J::Int32
+    N::Int
+    M::Int
+    J::Int
 end
 
-function QP(V::Matrix{T}; N=size(V, 1),
+function QP(V::Matrix{T}; N=size(V, 1), #N=convert(Int32, size(V, 1)),
     q=zeros(N),
     u=fill(Inf, N),
     d=zeros(N),
@@ -44,8 +44,10 @@ function QP(V::Matrix{T}; N=size(V, 1),
     b=ones(1)) where {T}
 
     #N::Int32 = length(q)
-    M::Int32 = length(b)
-    J::Int32 = length(g)
+    #M::Int32 = length(b)
+    #J::Int32 = length(g)
+    M = length(b)
+    J = length(g)
 
     (N, N) == size(V) || throw(DimensionMismatch("incompatible dimension: V"))
     V = convert(Matrix{T}, (V + V') / 2)   #make sure symmetric
@@ -89,7 +91,7 @@ end
 function QP(mu::T, P::Problem{T}) where {T}
     (; E, V, u, d, G, g, A, b, N, M, J) = P
     q = zeros(T, N)
-    N += 1
+    M += 1
     Am = [E'; A]
     bm = [mu; b]
     return QP(V, Am, G, q, bm, g, d, u, N, M, J)
@@ -168,9 +170,10 @@ end
 function solveQP(V::Matrix{T}, q::Vector{T}, A::Matrix{T}, b::Vector{T}, G::Matrix{T}, g::Vector{T},
     d::Vector{T}, u::Vector{T}; settings=Settings{T}(), settingsLP=Simplex.Settings{T}()) where {T}
 
-    N::Int32 = length(q)
-    M::Int32 = length(b)
-    J::Int32 = length(g)
+    #N::Int32 = length(q)
+    N = length(q)
+    M = length(b)
+    J = length(g)
     Q = QP(V, A, G, q, b, g, d, u, N, M, J)
     solveQP(Q; settings=settings, settingsLP=settingsLP)
 end
@@ -294,19 +297,22 @@ function KKTchk!(S, B, Eg, gamma, alphaL, GE, idAE, ra, M, tol::T) where {T}
     end
 end
 
-function solveQP(Q::QP{T}; settings=Settings(Q), settingsLP=SettingsLP(Q)) where {T}
-#function solveQP(Q::QP{T}; settings=Settings{T}(), settingsLP=SettingsLP(Q)) where {T}
+function solveQP(Q::QP{T}; settings=Settings(Q), settingsLP=SettingsLP(Q), x0=nothing, S=nothing) where {T}
+    #function solveQP(Q::QP{T}; settings=Settings(Q), settingsLP=SettingsLP(Q)) where {T}
+    #function solveQP(Q::QP{T}; settings=Settings{T}(), settingsLP=SettingsLP(Q)) where {T}
     (; V, A, G, q, b, g, d, u, N, M, J) = Q
     (; maxIter, tol, tolNorm) = settings
 
-    z0, S = initSSQP(Q, settingsLP)
+    if isnothing(S)
+        x0, S = initSSQP(Q, settingsLP)
+    end
 
     fu = u .< Inf   #finite upper bound
     fd = d .> -Inf   #finite lower bound
 
     Sz = @view S[1:N]
     Se = @view S[(N.+(1:J))]
-    z = copy(z0)
+    z = copy(x0)
 
 
     iter = 0
@@ -427,12 +433,12 @@ function initSSQP(Q::QP{T}, settingsLP) where {T}
         error("feasible region is empty")
     end
 
-    z0 = x[1:N]
+    x0 = x[1:N]
     S = S[1:N+J]
     for k in N+1:N+J
         S[k] = S[k] == IN ? OE : EO
     end
-    return z0, S
+    return x0, S
 
 end
 

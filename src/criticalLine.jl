@@ -361,7 +361,7 @@ function badK(S, PS, tolNorm)    #infeasible to compute CL
 end
 
 function joinCL(P::Problem{T}, S; incL=false, settingsLP=SettingsLP(P)) where {T}
-    (; V, E, u, d, G, g, A, b, N, M, J) = P
+    (; V, E, u, d, G, A, N, M, J) = P
     (; tol, rule) = settingsLP
 
 
@@ -711,6 +711,69 @@ See also [`cbCL!`](@ref), [`Problem`](@ref), [`Settings`](@ref), [`SettingsQP`](
 """
 function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=settings, settingsLP=SettingsLP(PS), kwargs...) where {T}
     #HMEP, HMFP (Highest Mean Frontier Portfolio), or HVEP (Highest Variance Efficient Portfolio), >=99.9% hit
+
+    (; u, d) = PS
+    (; tolS, muShft) = nS
+
+
+    S, iH, x, f = SimplexLP(PS; settings=settingsLP, min=false)
+
+    if length(iH) == 0  #unique solution
+        if !computeCL!(aCL, S, PS, nS)
+
+            # optimal x may degenerate, even fully degenerated to a boundary point
+            ik = findall(S .== IN)
+            K = length(ik)
+            for i in ik
+                if abs(x[i] - d[i]) < tolS
+                    S[i] = DN
+                    K -= 1
+                elseif abs(x[i] - u[i]) < tolS
+                    S[i] = UP
+                    K -= 1
+                end
+            end
+
+            if K == 0   #a boundary point
+                f, S = joinCL(PS, S; settingsLP=settingsLP) # find the adjoin S
+            end
+            #return computeCL!(aCL, S, PS, nS)
+        end
+
+    else    #for the remaining <=0.01%
+        #display("asCL!, buy lottery")
+
+        # try SSQP on μ_{H}
+        #Q = QP(f - muShft, PS)
+        #z, S, iter = solveQP(Q; settings=settings, settingsLP=settingsLP)
+
+        Q = QP(f, PS)
+        z, S, iter = solveQP(Q; settings=settings, settingsLP=settingsLP, x0=x, S=S)
+
+        if computeCL!(aCL, S, PS, nS)
+            return true     #>=99.9% done
+        else
+            Q = QP(PS, 0.0)     # to do: we may search L in QP(PS, L) until one is found
+            z, S, iter = solveQP(Q; settings=settings, settingsLP=settingsLP)
+            #return computeCL!(aCL, S, PS, nS)
+        end
+        return computeCL!(aCL, S, PS, nS)
+
+    end
+
+
+
+
+
+
+
+
+
+end
+
+#=
+function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=settings, settingsLP=SettingsLP(PS), kwargs...) where {T}
+    #HMEP, HMFP (Highest Mean Frontier Portfolio), or HVEP (Highest Variance Efficient Portfolio), >=99.9% hit
     S, iH, q, f = SimplexLP(PS; settings=settingsLP, min=false)
     #display((f,S))
     if computeCL!(aCL, S, PS, nS)
@@ -744,6 +807,7 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
     #asCL!(aCL, PS; nS=nS, settingsLP=settingsLP)
 
 end
+=#
 
 
 

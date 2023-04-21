@@ -127,9 +127,9 @@ struct Problem{T<:AbstractFloat}
     g::Vector{T}
     A::Matrix{T}
     b::Vector{T}
-    N::Int32
-    M::Int32
-    J::Int32
+    N::Int
+    M::Int
+    J::Int
     equilibrate::Bool    #true: enable equilibration (scale the variance)
     eE::T
     eV::T
@@ -163,8 +163,10 @@ function Problem(E::Vector{T}, V; N=length(E),
         Vq ./= eV
     end
 
-    M::Int32 = length(b)
-    J::Int32 = length(g)
+    #M::Int32 = length(b)
+    #J::Int32 = length(g)
+    M = length(b)
+    J = length(g)
     N == size(u, 1) || throw(DimensionMismatch("incompatible dimension: u"))
     N == size(d, 1) || throw(DimensionMismatch("incompatible dimension: d"))
     (J, N) == size(G) || throw(DimensionMismatch("incompatible dimension: G"))
