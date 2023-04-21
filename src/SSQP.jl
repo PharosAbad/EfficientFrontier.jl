@@ -178,6 +178,11 @@ function solveQP(V::Matrix{T}, q::Vector{T}, A::Matrix{T}, b::Vector{T}, G::Matr
     solveQP(Q; settings=settings, settingsLP=settingsLP)
 end
 
+function solveQP(Q::QP{T}; settings=Settings(Q), settingsLP=SettingsLP(Q)) where {T}
+    S, x0 = initSSQP(Q, settingsLP)
+    solveQP(Q, S, x0; settings=settings)
+end
+
 
 function aStep!(p, z::Vector{T}, S, F, Og, alpha, G, g, d, u, fu, fd, N, J, tol) where {T}
     #compute step
@@ -297,15 +302,18 @@ function KKTchk!(S, B, Eg, gamma, alphaL, GE, idAE, ra, M, tol::T) where {T}
     end
 end
 
-function solveQP(Q::QP{T}; settings=Settings(Q), settingsLP=SettingsLP(Q), x0=nothing, S=nothing) where {T}
+function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
+#function solveQP(Q::QP{T}; settings=Settings(Q), settingsLP=SettingsLP(Q), x0=zeros(T,0), S=fill(DN, 0)) where {T}
+#function solveQP(Q::QP{T}; settings=Settings(Q), settingsLP=SettingsLP(Q), x0=nothing, S=nothing) where {T}
     #function solveQP(Q::QP{T}; settings=Settings(Q), settingsLP=SettingsLP(Q)) where {T}
     #function solveQP(Q::QP{T}; settings=Settings{T}(), settingsLP=SettingsLP(Q)) where {T}
     (; V, A, G, q, b, g, d, u, N, M, J) = Q
     (; maxIter, tol, tolNorm) = settings
 
-    if isnothing(S)
-        x0, S = initSSQP(Q, settingsLP)
-    end
+    #if length(S) == 0
+    #if isnothing(S)
+    #    S, x0 = initSSQP(Q, settingsLP)
+    #end
 
     fu = u .< Inf   #finite upper bound
     fd = d .> -Inf   #finite lower bound
@@ -313,7 +321,6 @@ function solveQP(Q::QP{T}; settings=Settings(Q), settingsLP=SettingsLP(Q), x0=no
     Sz = @view S[1:N]
     Se = @view S[(N.+(1:J))]
     z = copy(x0)
-
 
     iter = 0
     #@inbounds     while true
@@ -354,7 +361,7 @@ function solveQP(Q::QP{T}; settings=Settings(Q), settingsLP=SettingsLP(Q), x0=no
         K = sum(F)          #to do: K == 0
         #display((S, iter, K))
         if K == 0
-            @warn "Hit a degenerate point, moving variables are all on the bounds"
+            @warn "Hit a degenerate point, moving variables are all on the bounds" (S, K)
             return z, S, -iter
         end
 
@@ -438,7 +445,7 @@ function initSSQP(Q::QP{T}, settingsLP) where {T}
     for k in N+1:N+J
         S[k] = S[k] == IN ? OE : EO
     end
-    return x0, S
+    return S, x0
 
 end
 

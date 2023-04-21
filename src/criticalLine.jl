@@ -719,8 +719,9 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
     S, iH, x, f = SimplexLP(PS; settings=settingsLP, min=false)
 
     if length(iH) == 0  #unique solution
-        if !computeCL!(aCL, S, PS, nS)
-
+        if computeCL!(aCL, S, PS, nS)
+            return true     #>=99.9% done
+        else    #>=0.09%
             # optimal x may degenerate, even fully degenerated to a boundary point
             ik = findall(S .== IN)
             K = length(ik)
@@ -739,7 +740,6 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
             end
             #return computeCL!(aCL, S, PS, nS)
         end
-
     else    #for the remaining <=0.01%
         #display("asCL!, buy lottery")
 
@@ -748,7 +748,8 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
         #z, S, iter = solveQP(Q; settings=settings, settingsLP=settingsLP)
 
         Q = QP(f, PS)
-        z, S, iter = solveQP(Q; settings=settings, settingsLP=settingsLP, x0=x, S=S)
+        #z, S, iter = solveQP(Q; settings=settings, settingsLP=settingsLP, x0=x, S=S)
+        z, S, iter = solveQP(Q, S, x; settings=settings)
 
         if computeCL!(aCL, S, PS, nS)
             return true     #>=99.9% done
@@ -757,57 +758,9 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
             z, S, iter = solveQP(Q; settings=settings, settingsLP=settingsLP)
             #return computeCL!(aCL, S, PS, nS)
         end
-        return computeCL!(aCL, S, PS, nS)
-
     end
-
-
-
-
-
-
-
-
-
+    return computeCL!(aCL, S, PS, nS)
 end
-
-#=
-function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=settings, settingsLP=SettingsLP(PS), kwargs...) where {T}
-    #HMEP, HMFP (Highest Mean Frontier Portfolio), or HVEP (Highest Variance Efficient Portfolio), >=99.9% hit
-    S, iH, q, f = SimplexLP(PS; settings=settingsLP, min=false)
-    #display((f,S))
-    if computeCL!(aCL, S, PS, nS)
-        return true     #>=99.9% done
-    end
-    #to do: SSQP on μ_{H}
-
-    #test the LMFP (inefficient branch) >=0.09%
-    rP = deepcopy(PS)
-    E = rP.E
-    E .= -E #negative
-    S, iH, q, f = SimplexLP(rP; settings=settingsLP, min=false)
-    xCL = sCL(rP)
-    if computeCL!(xCL, S, rP, nS)
-        ECL!(xCL, rP; numSettings=nS, settingsLP=settingsLP)
-        #ECL!(xCL, rP; numSettings=nS, settings=settings, settingsLP=settingsLP)
-        t = xCL[end]
-        if t.L0 == 0    #GMVP
-            return computeCL!(aCL, t.S, PS, nS)
-            #return true
-        end
-    end
-
-    #display("asCL!, buy lottery")
-
-    #for the remaining <=0.01%
-    Q = QP(PS, 0.0)     # to do: we can search L in QP(PS, L) to find one
-    z, S, iter = solveQP(Q; settings=settings, settingsLP=settingsLP)
-    computeCL!(aCL, S, PS, nS)
-
-    #asCL!(aCL, PS; nS=nS, settingsLP=settingsLP)
-
-end
-=#
 
 
 
