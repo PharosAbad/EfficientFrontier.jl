@@ -385,6 +385,14 @@ function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
         end =#
 
         F = (Sz .== IN)
+
+        K = sum(F)          #to do: K == 0
+        #display((S, iter, K))
+        if K == 0
+            @warn "Hit a degenerate point, moving variables are all on the bounds" (S, K)
+            return z, S, -iter
+        end
+
         B = .!F
         Eg = (Se .== EO)
         Og = (Se .== OE)
@@ -406,14 +414,6 @@ function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
             bE = bE[ra]
             AB = AB[ra, :]
         end
-
-        K = sum(F)          #to do: K == 0
-        #display((S, iter, K))
-        if K == 0
-            @warn "Hit a degenerate point, moving variables are all on the bounds" (S, K)
-            return z, S, -iter
-        end
-
 
         iV = inv(cholesky(V[F, F]))
         VBF = V[B, F]
@@ -504,7 +504,7 @@ function initSSQP(Q::QP{T}, settingsLP) where {T}
 end
 
 """
-        S, x0 = initLP(Q::QP{T}, settingsLP)
+        S, x0 = initQP(Q::QP{T}, settingsLP)
 
 performing Phase-I Simplex on the polyhedron {Az=b, Gz≤g, d≤z≤u} to find an initial feasible point
 allowing free variables such that -∞ < z < +∞
