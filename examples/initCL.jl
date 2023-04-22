@@ -2,7 +2,7 @@
 When there is an upper bound, to find a CL, we may use
 * `Clarabel.jl`:    an interior point numerical solver
 * `ASQP.jl`:        an inertia-controlling active-set solver
-* since v1.0  the default Simplex method is the best. Faster speed and best accuracy
+* since v1.0  the default Simplex method is the best: Faster speed and better accuracy
 =#
 
 # S&P 500 data, the Covariance matrix is not positive define

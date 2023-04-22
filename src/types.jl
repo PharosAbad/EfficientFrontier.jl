@@ -56,7 +56,7 @@ end
 Critical Line segment, with fields: default T = Float64
 
             S::Vector{Status}       # (N+J)x1
-            K::Integer              #number of IN assets
+            K::Int              #number of IN assets
             L1::T                   #higher lambda
             I1::Vector{Event{T}}    #go in/out events at L1
             L0::T                   #lower lambda
@@ -67,7 +67,7 @@ Critical Line segment, with fields: default T = Float64
 """
 struct sCL{T<:AbstractFloat}    #critical line segment
     S::Vector{Status}   # (N+J)x1
-    K::Integer  #number of IN assets
+    K::Int  #number of IN assets
     L1::T #higher lambda
     I1::Vector{Event{T}}   #go in/out events at L1
     L0::T #lower lambda

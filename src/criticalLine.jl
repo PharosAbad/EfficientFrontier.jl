@@ -296,7 +296,7 @@ the return aCL has the follwing structure
 
         struct sCL{T<:AbstractFloat}    #critical line segment
             S::Vector{Status}       # (N+J)x1
-            K::Integer              #number of IN assets
+            K::Int              #number of IN assets
             L1::T                   #higher lambda
             I1::Vector{Event{T}}    #go in/out events at L1
             L0::T                   #lower lambda
@@ -691,14 +691,14 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
         #Q = QP(f - muShft, PS)
         #z, S, iter = solveQP(Q; settings=settings, settingsLP=settingsLP)
 
-        Q = QP(f, PS)
+        Q = QP(f, PS)   # to do: we may search μ in QP(μ, PS) until one is found
         #z, S, iter = solveQP(Q; settings=settings, settingsLP=settingsLP, x0=x, S=S)
         z, S, iter = solveQP(Q, S, x; settings=settings)
 
         if computeCL!(aCL, S, PS, nS)
             return true     #>=99.9% done
         else
-            Q = QP(PS, 0.0)     # to do: we may search L in QP(PS, L) until one is found
+            Q = QP(PS, 0.0)     #solveQP tend to stall on QP(PS, L) when L != 0
             z, S, iter = solveQP(Q; settings=settings, settingsLP=settingsLP)
             #return computeCL!(aCL, S, PS, nS)
         end
