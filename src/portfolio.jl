@@ -155,6 +155,12 @@ function ePortfolio(aCL::Vector{sCL{T}}, P::Problem{T}, L::T) where {T}
         L = 0
         @warn "L < 0, reset L to zero, L = 0"
     end
+
+    L1 = aCL[1].L1
+    if L > L1
+        L = L1
+    end
+
     while aCL[k].L0 > L
         k += 1
     end
