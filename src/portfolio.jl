@@ -24,7 +24,7 @@ function eFrontier(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {
     W = trues(nL)
     @inbounds for k in eachindex(aCL)
         t = aCL[k]
-        if norm(t.beta) < tolNorm || t.L1 -t.L0 < tolL  #removable
+        if norm(t.beta) < tolNorm || t.L1 - t.L0 < tolL  #removable
             W[k] = false
         end
     end
@@ -159,15 +159,28 @@ function ePortfolio(aCL::Vector{sCL{T}}, P::Problem{T}, L::T) where {T}
         k += 1
     end
     t = aCL[k]
-    S = @view t.S[1:N]
+    Kb = 1
+    if k > 1 && L > t.L1
+        Sb = nextS(t, true, N)
+        Kb = sum(Sb .== IN)
+    end
+
+    if Kb == 0   # degenerate
+        S = @view Sb[1:N]
+    else
+        S = @view t.S[1:N]
+    end
+    #S = @view t.S[1:N]
     z = zeros(N)
-    F = (S .== IN)
     U = (S .== UP)
     D = (S .== DN)
 
     z[D] = d[D]
     z[U] = u[U]
-    z[F] = t.alpha + t.beta * L
+    if Kb > 0
+        F = (S .== IN)
+        z[F] = t.alpha + t.beta * L
+    end
     return z
 end
 
@@ -185,7 +198,7 @@ end
 
 compute L from mu
 """
-function mu2L(aEF::sEF, aCL::Vector{sCL{T}}, mu::T) where T
+function mu2L(aEF::sEF, aCL::Vector{sCL{T}}, mu::T) where {T}
     #L=a₂(μ-μ_{o}) , thus we use the linearity L-L₀=β(L₁-L₀)   β=((μ-μ₀)/(μ₁-μ₀))
     u = aEF.mu
     if mu >= u[1]
@@ -212,7 +225,7 @@ end
 
 compute mu from L
 """
-function L2mu(aEF::sEF, aCL::Vector{sCL{T}}, L::T) where T
+function L2mu(aEF::sEF, aCL::Vector{sCL{T}}, L::T) where {T}
     #μ=μ_{o}+qL => μ-μ₀=β(μ₁-μ₀)   β=((L-L₀)/(L₁-L₀))
     u = aEF.mu
     if L <= 0

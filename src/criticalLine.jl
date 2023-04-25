@@ -697,8 +697,8 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
 
         if computeCL!(aCL, S, PS, nS)
             return true     #>=99.9% done
-        else
-            Q = QP(PS, 0.0)     #solveQP tend to stall on QP(PS, L) when L != 0
+        else    #try at GMVP
+            Q = QP(PS, 0.0)
             z, S, iter = solveQP(Q; settings=settings, settingsLP=settingsLP)
             #return computeCL!(aCL, S, PS, nS)
         end

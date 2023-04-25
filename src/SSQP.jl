@@ -192,12 +192,30 @@ function getRows(A::Matrix{T}, tolNorm=sqrt(eps(T))) where {T}
     return findall(R)
 end
 
+function freeK!(S, z, V, q, N, tol)  #for K=0
+    #modify: S
+    #Sz = @view S[1:N]
+    #U = (Sz .== UP)
+    #D = (Sz .== DN)
+    p = V * z + q
+
+    t = true   #hit optimal
+
+    @inbounds for k in 1:N
+        if (p[k] > tol && S[k] == UP) || (p[k] < -tol && S[k] == DN)
+            S[k] = IN
+            t = false
+        end
+    end
+    return t ? 1 : -1
+
+end
 
 function aStep!(p, z::Vector{T}, S, F, Og, alpha, G, g, d, u, fu, fd, N, J, tol) where {T}
     #compute step
     Lo = Vector{Event{T}}(undef, 0)
     ik = findall(F)
-    for k in eachindex(alpha)
+    @inbounds for k in eachindex(alpha)
         j = ik[k]
         t = p[k]
         h = z[j]
@@ -210,7 +228,7 @@ function aStep!(p, z::Vector{T}, S, F, Og, alpha, G, g, d, u, fu, fd, N, J, tol)
         end
     end
 
-    if J > 0
+    @inbounds if J > 0
         zo = g[Og] - G[Og, :] * z
         po = G[Og, F] * p
         ik = findall(Og)
@@ -230,22 +248,23 @@ function aStep!(p, z::Vector{T}, S, F, Og, alpha, G, g, d, u, fu, fd, N, J, tol)
         L1 = Lo[1].L
     end
 
-    if L1 < 1.0
+    @inbounds if L1 < 1.0
         #adding blocking constraints
         z[F] .+= L1 * p
         #multi blocking
         for i in 1:lastindex(Lo)
             Lt = Lo[i]
+            if Lt.L - L1 > tol
+                break
+            end
             k = Lt.id
             To = Lt.To
-            if Lt.L - L1 < tol
-                if To == EO
-                    k += N
-                end
-                S[k] = To
-                if k <= N
-                    z[k] = To == DN ? d[k] : u[k]
-                end
+            if To == EO
+                k += N
+            end
+            S[k] = To
+            if k <= N
+                z[k] = To == DN ? d[k] : u[k]
             end
         end
         return -1
@@ -260,7 +279,7 @@ end
 function KKTchk!(S, F, B, Eg, gamma, alphaL, AE, GE, idAE, ra, N, M, tol::T) where {T}
     ib = findall(B)
     Li = Vector{Event{T}}(undef, 0)
-    for k in eachindex(gamma)
+    @inbounds for k in eachindex(gamma)
         j = ib[k]
         t = gamma[k]
         if S[j] == UP && t > tol
@@ -271,7 +290,7 @@ function KKTchk!(S, F, B, Eg, gamma, alphaL, AE, GE, idAE, ra, N, M, tol::T) whe
     end
 
     JE = size(GE, 1)
-    if JE > 0
+    @inbounds if JE > 0
         iE = zeros(Int, JE)
         iR = findall(ra .> M)
         iE[idAE[ra[iR]]] = iR
@@ -296,7 +315,7 @@ function KKTchk!(S, F, B, Eg, gamma, alphaL, AE, GE, idAE, ra, N, M, tol::T) whe
     end
 
     nL = length(Li)
-    if nL > 0   #entering one only, the tighest one
+    @inbounds if nL > 0   #entering one only, the tighest one
         sort!(Li, by=x -> x.L)
         Lt = Li[1]
         k = Lt.id
@@ -352,17 +371,8 @@ end
 
 
 function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
-    #function solveQP(Q::QP{T}; settings=Settings(Q), settingsLP=SettingsLP(Q), x0=zeros(T,0), S=fill(DN, 0)) where {T}
-    #function solveQP(Q::QP{T}; settings=Settings(Q), settingsLP=SettingsLP(Q), x0=nothing, S=nothing) where {T}
-    #function solveQP(Q::QP{T}; settings=Settings(Q), settingsLP=SettingsLP(Q)) where {T}
-    #function solveQP(Q::QP{T}; settings=Settings{T}(), settingsLP=SettingsLP(Q)) where {T}
     (; V, A, G, q, b, g, d, u, N, M, J) = Q
     (; maxIter, tol, tolNorm) = settings
-
-    #if length(S) == 0
-    #if isnothing(S)
-    #    S, x0 = initSSQP(Q, settingsLP)
-    #end
 
     fu = u .< Inf   #finite upper bound
     fd = d .> -Inf   #finite lower bound
@@ -372,25 +382,22 @@ function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
     z = copy(x0)
 
     iter = 0
-    #@inbounds     while true
-    while true
+    @inbounds while true
+    #while true
         iter += 1
-        if iter >= maxIter
+        if iter > maxIter
             return z, S, -iter
         end
 
-        #=
-        if iter == 6 #mod(iter, 10) == 0
-            display((iter, S))
-        end =#
-
         F = (Sz .== IN)
-
-        K = sum(F)          #to do: K == 0
-        #display((S, iter, K))
+        K = sum(F)
         if K == 0
-            @warn "Hit a degenerate point, moving variables are all on the bounds" (S, K)
-            return z, S, -iter
+            status = freeK!(S, z, V, q, N, tol)
+            if status > 0
+                return z, S, iter
+            else
+                continue
+            end
         end
 
         B = .!F
@@ -568,7 +575,7 @@ function initQP(Q::QP{T}, settingsLP) where {T}
     f, x0, _q, _invB, _iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
 
     if f > tol
-    #if abs(f) > tol
+        #if abs(f) > tol
         #display(f)
         error("feasible region is empty")
     end
