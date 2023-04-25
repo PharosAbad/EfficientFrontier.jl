@@ -194,20 +194,34 @@ end
 
 function freeK!(S, z, V, q, N, tol)  #for K=0
     #modify: S
-    #Sz = @view S[1:N]
-    #U = (Sz .== UP)
-    #D = (Sz .== DN)
     p = V * z + q
+    #= if norm(p, Inf) < tol
+        return 1
+    end =#
+    S0 = copy(S)
 
     t = true   #hit optimal
-
     @inbounds for k in 1:N
-        if (p[k] > tol && S[k] == UP) || (p[k] < -tol && S[k] == DN)
+        if (p[k] >= -tol && S[k] == UP) || (p[k] <= tol && S[k] == DN)
+            #if (p[k] > tol && S[k] == UP) || (p[k] < -tol && S[k] == DN)
             S[k] = IN
             t = false
         end
     end
-    return t ? 1 : -1
+    if t
+        return 1
+    else
+        ip = findall(S .== IN)
+        if length(ip) > 0 && norm(p[ip], Inf) <= tol  #all movable are optimal
+            S[ip] = S0[ip]  #restore the status
+            return 1
+        end
+        return -1
+    end
+    #= if !t && norm(p[S .== IN], Inf) <= tol  #all movable are optimal
+        return 1
+    end =#
+    #return t ? 1 : -1
 
 end
 
@@ -267,6 +281,16 @@ function aStep!(p, z::Vector{T}, S, F, Og, alpha, G, g, d, u, fu, fd, N, J, tol)
                 z[k] = To == DN ? d[k] : u[k]
             end
         end
+        #= ik = findall(F)
+        for k in ik
+            if abs(z[k] - d[k]) < tol
+                z[k] = d[k]
+                S[k] = DN
+            elseif abs(z[k] - u[k]) < tol
+                z[k] = u[k]
+                S[k] = UP
+            end
+        end =#
         return -1
     else
         # if step size L1 == 1.0, some z_i hit bounds
@@ -383,7 +407,7 @@ function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
 
     iter = 0
     @inbounds while true
-    #while true
+        #while true
         iter += 1
         if iter > maxIter
             return z, S, -iter
@@ -449,6 +473,16 @@ function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
         #z[F] = alpha
         status = KKTchk!(S, F, B, Eg, gamma, alphaL, AE, GE, idAE, ra, N, M, tol)
         if status > 0
+             ik = findall(F)
+            for k in ik #check fake IN
+                if abs(z[k] - d[k]) < tol
+                    z[k] = d[k]
+                    S[k] = DN
+                elseif abs(z[k] - u[k]) < tol
+                    z[k] = u[k]
+                    S[k] = UP
+                end
+            end
             return z, S, iter
         end
     end
