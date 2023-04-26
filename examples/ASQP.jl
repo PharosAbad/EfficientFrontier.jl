@@ -587,8 +587,8 @@ end
 
 """
 
-        asQP(PS::Problem{T}; settingsLP=SettingsLP(PS), L::T=0.0) where T       : L version
-        asQP(PS::Problem{T}, mu::T; settingsLP=SettingsLP(PS)) where T          : mu version
+        asQP(PS::Problem{T}, L::T=0.0; settingsLP=SettingsLP(PS)) where T       : L version
+        asQP(mu::T, PS::Problem{T}; settingsLP=SettingsLP(PS)) where T          : mu version
 
 QP numerical solver, to the portfolio selection problem define by `PS::Problem`
 
@@ -596,12 +596,12 @@ See [`Documentation for EfficientFrontier.jl`](https://github.com/PharosAbad/Eff
 
 See also [`Problem`](@ref), [`SettingsLP`](@ref), [`asCL!`](@ref)
 """
-function asQP(PS::Problem{T}; settingsLP=SettingsLP(PS), L::T=0.0) where {T}
+function asQP(PS::Problem{T}, L::T=0.0; settingsLP=SettingsLP(PS)) where {T}
 
     if isinf(L)
         min = L == Inf ? false : true
         mu = getfield(SimplexLP(PS; settings=settingsLP, min=min), 4)
-        return asQP(PS, mu; settingsLP=settingsLP)
+        return asQP(mu, PS; settingsLP=settingsLP)
     end
 
     #finite L
@@ -659,7 +659,7 @@ function asQP(PS::Problem{T}; settingsLP=SettingsLP(PS), L::T=0.0) where {T}
     return solveASQP(V, qq, Aq, bq, x)
 end
 
-function asQP(PS::Problem{T}, mu::T; settingsLP=SettingsLP(PS)) where {T}
+function asQP(mu::T, PS::Problem{T}; settingsLP=SettingsLP(PS)) where {T}
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
     (; tol, rule) = settingsLP
 

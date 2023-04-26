@@ -12,11 +12,11 @@ function SettingsOS(; kwargs...)
 end
 
 
-function OpSpQP(PS::Problem{T}; settings=SettingsOS(), L::T=0.0) where {T}
+function OpSpQP(PS::Problem{T}, L::T=0.0; settings=SettingsOS()) where {T}
     if isinf(L)
         min = L == Inf ? false : true
         x = OpSpLP(PS; settings=settings, min=min)
-        return OpSpQP(PS, x.info.obj_val; settings=settings)
+        return OpSpQP(x.info.obj_val, PS; settings=settings)
     end
 
     (; E, V, u, d, G, g, A, b, N, J) = PS
@@ -43,7 +43,7 @@ function OpSpQP(PS::Problem{T}; settings=SettingsOS(), L::T=0.0) where {T}
         qq = -L * E
     end
     OSQP.setup!(model; P=P, q=qq, A=Ao, l=lo, u=uo, settings...) # `settings...` to iterate pairs in `settings`
-    return OSQP.solve!(model)    
+    return OSQP.solve!(model)
 end
 
 
@@ -58,14 +58,14 @@ function OpSpLP(PS::Problem{T}; settings=SettingsOS(), min=true) where {T}
     lo = [b; fill(-Inf, J); d]
     model = OSQP.Model()
     OSQP.setup!(model; P=P, q=q, A=Ao, l=lo, u=uo, settings...)
-    x = OSQP.solve!(model)    
+    x = OSQP.solve!(model)
     if !min
         x.info.obj_val = -x.info.obj_val
     end
     return x
 end
 
-function OpSpQP(PS::Problem{T}, mu::T; settings=SettingsOS()) where {T}
+function OpSpQP(mu::T, PS::Problem{T}; settings=SettingsOS()) where {T}
 #function OpSpQP(E::Vector{T}, V::Matrix{T}, mu::T, u::Vector{T}, d::Vector{T}, G::Matrix{T}, g::Vector{T}, A::Matrix{T}, b::Vector{T}) where {T}
     (; E, V, u, d, G, g, A, b, N, J) = PS
     P = sparse(V)
@@ -99,7 +99,7 @@ function OpSpCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=
         error("Not able to find the expected return of HMFP (Highest Mean Frontier Portfolio)")
     end =#
 
-    #= 
+    #=
     #mu = -x.info.obj_val
     mu = x.info.obj_val
     shft =  muShft
@@ -108,7 +108,7 @@ function OpSpCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=
     end
     mu -= shft
     #y = OpSpQP(E, V, mu, u, d, G, g, A, b)
-    y = OpSpQP(PS, mu; settings=settings)
+    y = OpSpQP(mu, PS; settings=settings)
     if y.info.status_val != 1   #SOLVED
         error("Not able to find a muShft to the HMFP (Highest Mean Frontier Portfolio)")
     end =#

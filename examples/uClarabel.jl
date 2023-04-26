@@ -20,8 +20,7 @@ function SettingsCl(; kwargs...)
     Clarabel.Settings(; kwargs...)
 end
 
-function ClarabelQP(PS::Problem{T}, mu::T; settings=SettingsCl()) where {T}
-    #function ClarabelQP(PS::Problem{T}, mu::T; settings= SettingsCl(PS; verbose = false)) where {T}
+function ClarabelQP(mu::T, PS::Problem{T}; settings=SettingsCl()) where {T}
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
     iu = findall(u .< Inf)
     P = sparse(V)
@@ -51,12 +50,12 @@ function ClarabelQP(PS::Problem{T}; settings= SettingsCl()) where {T}
 end
 =#
 
-function ClarabelQP(PS::Problem{T}; settings=SettingsCl(), L::T=0.0) where {T}
+function ClarabelQP(PS::Problem{T}, L::T=0.0; settings=SettingsCl()) where {T}
 
     if isinf(L)
         min = L == Inf ? false : true
         x = ClarabelLP(PS; settings=settings, min=min)
-        return ClarabelQP(PS, x.obj_val; settings=settings)
+        return ClarabelQP(x.obj_val, PS; settings=settings)
     end
 
     (; E, V, u, d, G, g, A, b, N, M, J) = PS
@@ -154,8 +153,7 @@ function ClarabelCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), setti
         shft *= abs(mu)
     end
     mu -= shft
-    #y = ClarabelQP(PS, x.obj_val * (nS.muShft - 1); settings=settings)
-    y = ClarabelQP(PS, mu; settings=settings)
+    y = ClarabelQP(mu, PS; settings=settings)
     if Int(y.status) != 1   #SOLVED
         error("Not able to find a muShft to the HMFP (Highest Mean Frontier Portfolio)")
     end
