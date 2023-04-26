@@ -50,8 +50,8 @@ Base.precompile(Tuple{typeof(computeCL!), Vector{sCL{Float64}}, Vector{Status}, 
 Base.precompile(Tuple{typeof(ECL!), Vector{sCL{Float64}}, Problem{Float64}})
 Base.precompile(Tuple{typeof(Simplex.cDantzigLP), Vector{Float64}, Matrix{Float64}, Vector{Float64}, Vector{Float64}, Vector{Float64}, Matrix{Float64}, Vector{Status}})
 Base.precompile(Tuple{typeof(eFrontier), Vector{sCL{Float64}}, Problem{Float64}})
-Base.precompile(Tuple{typeof(ePortfolio), sEF, Float64})
-#Base.precompile(Tuple{typeof(fPortfolio), Problem{Float64}, Float64})
+Base.precompile(Tuple{typeof(ePortfolio), Float64, sEF})
+#Base.precompile(Tuple{typeof(fPortfolio), Float64, Problem{Float64}})
 # =#
 
 

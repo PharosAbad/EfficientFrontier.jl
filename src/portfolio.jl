@@ -94,24 +94,24 @@ end
 
 """
 
-        z = ePortfolio(aEF::sEF, mu)
-        z = ePortfolio(P::Problem, mu; nS=Settings(P), settings, settingsLP)            #one-step, given mu
-        z = ePortfolio(aCL::Vector{sCL}, P::Problem, L)
-        z = ePortfolio(P::Problem; nS=Settings(P), settings, settingsLP, L::T=0.0)      #one-step, given L
+        z = ePortfolio(mu, aEF::sEF)
+        z = ePortfolio(mu, P::Problem; nS=Settings(P), settings, settingsLP)            #one-step, given mu
+        z = ePortfolio(P::Problem, L, aCL::Vector{sCL})
+        z = ePortfolio(P::Problem, L::T=0.0; nS=Settings(P), settings, settingsLP)      #one-step, given L
 
-`ePortfolio(aEF, mu)` compute the efficient portfolio given mu when Efficient Frontier is known, returns portfolio weights z (Nx1 vector of NaN if mu is out of range)
+`ePortfolio(mu, aEF)` compute the efficient portfolio given mu when Efficient Frontier is known, returns portfolio weights z (Nx1 vector of NaN if mu is out of range)
 
-`ePortfolio(P, mu; nS=Settings(P))` compute the efficient portfolio for `P` given mu, returns portfolio weights z (Nx1 vector of NaN if mu is out of range)
+`ePortfolio(mu, P; nS=Settings(P))` compute the efficient portfolio for `P` given mu, returns portfolio weights z (Nx1 vector of NaN if mu is out of range)
 If mu is a vector, z is a matrix, its row k is the portfolio weights for mu[k]. Here you can not set `init::Function`
 
-`ePortfolio(aCL, P, L)` compute the efficient portfolio for `P` with known Critical Lines `aCL`, given `L`
+`ePortfolio(P, L, aCL)` compute the efficient portfolio for `P` with known Critical Lines `aCL`, given `L`
 
-`ePortfolio(P::Problem; nS=Settings(P), settings, settingsLP, L::T=0.0)` compute the efficient portfolio for `P` given `L`
+`ePortfolio(P::Problem, L::T=0.0; nS=Settings(P), settings, settingsLP)` compute the efficient portfolio for `P` given `L`
 
 See also [`EfficientFrontier.ECL`](@ref), [`eFrontier`](@ref), [`Problem`](@ref), [`Settings`](@ref)
 
 """
-function ePortfolio(aEF::sEF, mu::Float64)
+function ePortfolio(mu::Float64, aEF::sEF)
     u = aEF.mu
     Z = aEF.Z
     z = zeros(size(Z, 2))
@@ -131,23 +131,23 @@ function ePortfolio(aEF::sEF, mu::Float64)
 end
 
 
-function ePortfolio(P::Problem, mu::Float64; nS=Settings(P), settings=SettingsQP(P), settingsLP=SettingsLP(P))
+function ePortfolio(mu::Float64, P::Problem; nS=Settings(P), settings=SettingsQP(P), settingsLP=SettingsLP(P))
     aEF = eFrontier(ECL(P; numSettings=nS, settings=settings, settingsLP=settingsLP), P; nS=nS)
-    return ePortfolio(aEF, mu)
+    return ePortfolio(mu, aEF)
 end
 
-function ePortfolio(P::Problem, mu::Vector{Float64}; nS=Settings(P), settings=SettingsQP(P), settingsLP=SettingsLP(P))
+function ePortfolio(mu::Vector{Float64}, P::Problem; nS=Settings(P), settings=SettingsQP(P), settingsLP=SettingsLP(P))
     aEF = eFrontier(ECL(P; numSettings=nS, settings=settings, settingsLP=settingsLP), P; nS=nS)
     M = length(mu)
     Z = similar(mu, M, P.N)
     for k in 1:M
-        Z[k, :] = ePortfolio(aEF, mu[k])
+        Z[k, :] = ePortfolio(mu[k], aEF)
     end
     return Z
 end
 
 
-function ePortfolio(aCL::Vector{sCL{T}}, P::Problem{T}, L::T) where {T}
+function ePortfolio(P::Problem{T}, L::T, aCL::Vector{sCL{T}}) where {T}
     (; u, d, N) = P
     k = 1
     #L = L < 0 ? 0 : L
@@ -190,9 +190,9 @@ function ePortfolio(aCL::Vector{sCL{T}}, P::Problem{T}, L::T) where {T}
     return z
 end
 
-function ePortfolio(P::Problem{T}; nS=Settings(P), settings=SettingsQP(P), settingsLP=SettingsLP(P), L::T=0.0) where {T}
+function ePortfolio(P::Problem{T}, L::T=0.0; nS=Settings(P), settings=SettingsQP(P), settingsLP=SettingsLP(P)) where {T}
     aCL = ECL(P; numSettings=nS, settings=settings, settingsLP=settingsLP)
-    return ePortfolio(aCL, P, L)
+    return ePortfolio(P, L, aCL)
 end
 
 

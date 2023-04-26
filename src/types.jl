@@ -109,7 +109,7 @@ From L=+∞ to L=0. Default values: u = +∞, d = 0, G = [], g = [], A = ones(1,
     aCL = EfficientFrontier.ECL(P)  #compute all Critical Lines
     aEF = eFrontier(aCL, P)     #compute the Efficient Frontier
     mu = (aEF.mu[1]+aEF.mu[end])/2  #mu at the middle of Efficient Frontier
-    z = ePortfolio(aEF, mu)     #weight of the efficient portfolio given mu
+    z = ePortfolio(mu, aEF)     #weight of the efficient portfolio given mu
 
 ```
 
