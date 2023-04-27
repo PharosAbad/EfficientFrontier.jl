@@ -242,7 +242,7 @@ kwargs are from the fields of Settings{T<:AbstractFloat} for Float64 and BigFloa
             tolNorm::T     #2^-26 ≈ 1.5e-8  for norms
             tolS::T        #2^-26 ≈ 1.5e-8  for identifying S
             tolL::T        #2^-26 ≈ 1.5e-8  for L
-            tolG::T        #2^-26 ≈ 1.5e-8  for Greeks (beta and gamma)
+            tolG::T        #2^-27 ≈ 7.5e-9  for Greeks (beta and gamma)
             muShft::T      #2^-18 ≈ 3.8e-6  shift the mu to (1 +/- muShft)*mu
 
 """
@@ -261,7 +261,7 @@ function Settings{Float64}(; tol=2^-26,
     tolNorm=2^-26,
     tolS=2^-26,
     tolL=2^-26,
-    tolG=2^-26,
+    tolG=2^-27,
     muShft=2^-18) #,
     #rule=:Dantzig)
     #Settings{Float64}(tol, tolNorm, tolS, tolL, tolG, muShft, rule)
@@ -273,7 +273,7 @@ function Settings{BigFloat}(; tol=BigFloat(2)^-76,
     #tolS = BigFloat(2)^-76,     #BigFloat(2)^-26
     tolS=BigFloat(2)^-26, #waiting for Clarabel.Settings to update for BigFloat
     tolL=BigFloat(2)^-76,
-    tolG=BigFloat(2)^-76,
+    tolG=BigFloat(2)^-77,
     #muShft = BigFloat(2)^-27)
     muShft=BigFloat(2)^-18)  #,
     #rule=:Dantzig)

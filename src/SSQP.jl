@@ -132,20 +132,23 @@ struct Settings{T<:AbstractFloat}
     maxIter::Int64  #7777
     tol::T          #2^-26
     tolNorm::T      #2^-26
+    tolG::T         #2^-27 for Greeks (beta and gamma)
 end
 
 Settings(; kwargs...) = Settings{Float64}(; kwargs...)
 
 function Settings{Float64}(; maxIter=7777,
     tol=2^-26,
-    tolNorm=2^-26)
-    Settings{Float64}(maxIter, tol, tolNorm)
+    tolNorm=2^-26,
+    tolG=2^-27)
+    Settings{Float64}(maxIter, tol, tolNorm, tolG)
 end
 
 function Settings{BigFloat}(; maxIter=7777,
     tol=BigFloat(2)^-76,
-    tolNorm=BigFloat(2)^-76)
-    Settings{BigFloat}(maxIter, tol, tolNorm)
+    tolNorm=BigFloat(2)^-76,
+    tolG=BigFloat(2)^-77)
+    Settings{BigFloat}(maxIter, tol, tolNorm, tolG)
 end
 
 function Settings(Q::QP{T}; kwargs...) where {T}
@@ -300,15 +303,15 @@ function aStep!(p, z::Vector{T}, S, F, Og, alpha, G, g, d, u, fu, fd, N, J, tol)
 
 end
 
-function KKTchk!(S, F, B, Eg, gamma, alphaL, AE, GE, idAE, ra, N, M, tol::T) where {T}
+function KKTchk!(S, F, B, Eg, gamma, alphaL, AE, GE, idAE, ra, N, M, tolG::T) where {T}
     ib = findall(B)
     Li = Vector{Event{T}}(undef, 0)
     @inbounds for k in eachindex(gamma)
         j = ib[k]
         t = gamma[k]
-        if S[j] == UP && t > tol
+        if S[j] == UP && t > tolG
             push!(Li, Event{T}(UP, IN, j, -t))
-        elseif S[j] == DN && t < -tol
+        elseif S[j] == DN && t < -tolG
             push!(Li, Event{T}(DN, IN, j, t))
         end
     end
@@ -332,7 +335,7 @@ function KKTchk!(S, F, B, Eg, gamma, alphaL, AE, GE, idAE, ra, N, M, tol::T) whe
         ib = findall(Eg)
         for k in 1:JE
             t = Lda[k]
-            if t < -tol
+            if t < -tolG
                 push!(Li, Event{T}(EO, OE, ib[k], t))
             end
         end
@@ -396,7 +399,7 @@ end
 
 function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
     (; V, A, G, q, b, g, d, u, N, M, J) = Q
-    (; maxIter, tol, tolNorm) = settings
+    (; maxIter, tol, tolNorm, tolG) = settings
 
     fu = u .< Inf   #finite upper bound
     fd = d .> -Inf   #finite lower bound
@@ -471,7 +474,7 @@ function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
         alphaL = -(TC' * c + C * bE)
         gamma = VBF * alpha + V[B, B] * zB + q[B] + AB' * alphaL
         #z[F] = alpha
-        status = KKTchk!(S, F, B, Eg, gamma, alphaL, AE, GE, idAE, ra, N, M, tol)
+        status = KKTchk!(S, F, B, Eg, gamma, alphaL, AE, GE, idAE, ra, N, M, tolG)
         if status > 0
              ik = findall(F)
             for k in ik #check fake IN
