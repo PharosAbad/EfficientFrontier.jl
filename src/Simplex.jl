@@ -54,11 +54,12 @@ q:    x[B]
         s.t.  Ax=b
               d≤x≤u
 ```
+the native model requires that `d` is finite
 """
-function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
+function cDantzigLP(c::Vector{T}, A, b, d, u, B, S; invB, q, tol=2^-26) where {T}
     #B is always sorted. B and S in caller is change, compute invB and q=xB each step, switch Dantzig to Bland rule when iter > N
 
-    T = typeof(c[1])
+    #T = typeof(c[1])
     N = length(c)
     M = length(b)
     F = trues(N)
@@ -77,6 +78,7 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
     x[S.==DN] .= d[S.==DN]
     ud = u - d
     du = -ud
+    fu = u .< Inf   #finite upper bound
 
     Y = invB * A[:, F]
     h = c[F] - Y' * c[B]
@@ -89,6 +91,11 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
     Bland = false
     loop = 0
     @inbounds while nH > 0
+        loop += 1
+        if loop > N
+            Bland = true    #Dantzig rule switch to Bland rule
+        end
+
         #Dantzig rule or Bland rule
         #k0 = Bland ? 1 : argmax(hp)
         k0 = Bland ? 1 : argmax(hp ./ cA[iH]) #Largest-Distance Rule
@@ -104,7 +111,7 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                     gt[m] = (q[j] - d[i]) / p[j]
                     ip[m] = j
                     Sb[m] = DN
-                elseif p[j] < -tol && u[i] < Inf
+                elseif p[j] < -tol #&& fu[i]
                     m += 1
                     gt[m] = (q[j] - u[i]) / p[j]
                     ip[m] = j
@@ -112,7 +119,7 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                 end
             end
 
-            g0 = ud[k] #u[k] - d[k]
+            #= g0 = ud[k] #u[k] - d[k]
             if m == 0
                 if isfinite(g0) #DN -> UP
                     l = -1
@@ -126,12 +133,35 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                 if gl > g0
                     l = -1
                 end
+            end =#
+            if m == 0   # p=0 => A[:,k]=0
+                if fu[k]    #DN -> UP
+                    l = -1
+                else    # unbounded
+                    return c' * x, x, invB, 3
+                end
+            else
+                (gl, l) = findmin(gt[1:m])  #gl>0
+                if fu[k]
+                    if gl >= ud[k]   #DN -> UP
+                        l = -1
+                    else
+                        Sl = Sb[l]
+                        l = ip[l]
+                    end
+                else
+                    if isinf(gl) #unbounded
+                        return c' * x, x, invB, 3
+                    end
+                    Sl = Sb[l]
+                    l = ip[l]
+                end
             end
 
-        else
+        else    #UP
             for j in 1:M
                 i = B[j]
-                if p[j] > tol && u[i] < Inf
+                if p[j] > tol #&& fu[i]
                     m += 1
                     gt[m] = (q[j] - u[i]) / p[j]
                     ip[m] = j
@@ -143,8 +173,7 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                     Sb[m] = DN
                 end
             end
-
-            g0 = du[k] #d[k] - u[k]
+            #= g0 = du[k] #d[k] - u[k]
             if m == 0
                 if isfinite(g0) #UP -> DN
                     l = -2
@@ -158,14 +187,20 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                 if gl < g0
                     l = -2
                 end
+            end =#
+            if m == 0   # p=0 => A[:,k]=0
+                l = -2  #UP -> DN
+            else
+                (gl, l) = findmax(gt[1:m])  #gl<0
+                if gl <= du[k]  #du[k] is finite, for S[k]==UP and d is finite
+                    l = -2  #UP -> DN
+                else
+                    Sl = Sb[l]
+                    l = ip[l]
+                end
             end
-
         end
 
-        loop += 1
-        if loop > N
-            Bland = true    #Dantzig rule switch to Bland rule
-        end
 
         if l == -1  #flip the sate
             S[k] = UP
@@ -205,11 +240,12 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
 
     #@. ih = abs(h) < tol   # h==0
     ih = abs.(h) .< tol   # h==0
-    iH = findall(F)[ih]
+    #iH = findall(F)[ih]
     x[B] = q
-    #return q, B, invB, iH, c' * x
-    #return c' * x, x, q, B, invB, iH
-    return c' * x, x, q, invB, iH
+
+    status = length(ih) > 0 ? 2 : 1
+    #return c' * x, x, invB, 2  #infinitely many solutions
+    return c' * x, x, invB, status
 end
 
 
@@ -225,10 +261,11 @@ q:    x[B]
         s.t.  Ax=b
               d≤x≤u
 ```
+the native model requires that `d` is finite
 """
-function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
+function maxImprvLP(c::Vector{T}, A, b, d, u, B, S; invB, q, tol=2^-26) where {T}
     #greatest improvement, B is always sorted. B and S in caller is change, compute invB and q=xB each step
-    T = typeof(c[1])
+    #T = typeof(c[1])
     N = length(c)
     M = length(b)
     F = trues(N)
@@ -249,6 +286,7 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
     #vD = falses(N - M)  #DN or not, for each candidate k
     ud = u - d
     du = -ud
+    fu = u .< Inf   #finite upper bound
 
     ih = S[F] .== DN
     h[ih] .= -h[ih]
@@ -271,7 +309,7 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                         gt[m] = (q[j] - d[i]) / p[j]
                         ip[m] = j
                         Sb[m] = DN
-                    elseif p[j] < -tol && u[i] < Inf
+                    elseif p[j] < -tol #&& u[i] < Inf
                         m += 1
                         gt[m] = (q[j] - u[i]) / p[j]
                         ip[m] = j
@@ -279,18 +317,46 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                     end
                 end
 
-                if m == 0
+                #= if m == 0
                     g[n] = ud[k]
                     l = 1
                     ip[1] = -1   #isfinite(u[k]) to flip state, isinf(u[k]) unbounded
                 else
                     (g[n], l) = findmin(gt[1:m])
+                end =#
+                g0 = ud[k]
+                if m == 0
+                    if fu[k]    #DN -> UP
+                        g[n] = g0
+                        l = 1
+                        ip[1] = -1
+                    else    # unbounded
+                        return c' * x, x, invB, 3
+                    end
+                else
+                    (g[n], l) = findmin(gt[1:m])
+
+                    if fu[k]
+                        if g[n] >= g0 #DN -> UP
+                            g[n] = g0
+                            ip[l] = -1
+                        end
+                    else
+                        if isinf(g[n])  #unbounded
+                            return c' * x, x, invB, 3
+                        end
+                    end
+
+                    #= if isinf(g[n]) && !fu[k] #unbounded
+                        return c' * x, x, invB, 3
+                    end
+                    if g[n] >= g0 #DN -> UP
+                        g[n] = g0
+                        ip[l] = -1
+                    end =#
                 end
-                if g[n] > ud[k]
-                    g[n] = ud[k]
-                    ip[l] = -1
-                end
-            else
+
+            else    #UP
                 for j in 1:M
                     i = B[j]
                     if p[j] > tol && u[i] < Inf
@@ -306,7 +372,7 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                     end
                 end
 
-                if m == 0
+                #= if m == 0
                     g[n] = du[k]
                     l = 1
                     ip[1] = -2   #isfinite(u[k]) to flip state, isinf(u[k]) unbounded
@@ -316,16 +382,31 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                 if g[n] < du[k]
                     g[n] = du[k]
                     ip[l] = -2
+                end =#
+                g0 = du[k]  #finite
+                if m == 0
+                    g[n] = g0
+                    l = 1
+                    ip[1] = -2  #UP -> DN
+                else
+                    (g[n], l) = findmax(gt[1:m])
+                    #(gl, l) = findmax(gt[1:m])  #gl<0
+
+                    if g[n] <= g0
+                        g[n] = g0
+                        ip[l] = -2
+                    end
                 end
+
             end
             ig[n] = ip[l]
             vS[n] = Sb[l]
         end
         k = getfield(findmax(abs.(h[ih] .* g[1:nH])), 2)
         l = ig[k]
-        if l < 0 && isinf(u[k])
+        #= if l < 0 && isinf(u[k])
             error("infeasible or unbounded")
-        end
+        end =#
 
         #kd = vD[k]
         p = P[:, k]
@@ -368,11 +449,13 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
     end
 
     ih = abs.(h) .< tol   # h==0
-    iH = findall(F)[ih]
+    #iH = findall(F)[ih]
     x[B] = q
-    #return q, B, invB, iH, c' * x
-    #return c' * x, x, q, B, invB, iH
-    return c' * x, x, q, invB, iH
+
+    status = length(ih) > 0 ? 2 : 1
+    #return c' * x, x, invB, 2  #infinitely many solutions
+    return c' * x, x, invB, status
+
 end
 
 
@@ -423,9 +506,10 @@ function SimplexLP(PS::Problem{T}; settings=Settings(PS), min=true) where {T}
     u1 = [us; fill(Inf, Ms)]
 
     #f, x, q, B, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
-    f, x, q, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+    f, x, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
     if f > tol
-        error("empty feasible region")
+        #error("empty feasible region")
+        return S, 0, x, f
     end
 
     #display("--- --- phase 2 --- ---")
@@ -434,9 +518,10 @@ function SimplexLP(PS::Problem{T}; settings=Settings(PS), min=true) where {T}
     if !min
         Es = -Es
     end
+    q = x[B]
     #f, x, q, B, invB, iH = solveLP(-Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
     #f, x, q, B, invB, iH = solveLP(Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
-    f, x, q, invB, iH = solveLP(Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
+    f, x, invB, iH = solveLP(Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
     if !min
         f = -f
     end

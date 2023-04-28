@@ -414,7 +414,7 @@ function joinCL(P::Problem{T}, S; incL=false, settingsLP=SettingsLP(P)) where {T
         invB[j, j] = b0[j] >= q[j] ? one(T) : -one(T)
     end
     q = abs.(q - b0)
-    f, x, q, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S1; invB=invB, q=q, tol=tol)
+    f, x, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S1; invB=invB, q=q, tol=tol)
 
     if f > tol
         error("empty feasible region")
@@ -425,7 +425,8 @@ function joinCL(P::Problem{T}, S; incL=false, settingsLP=SettingsLP(P)) where {T
     if incL
         c0 = -c0
     end
-    f, x, q, invB, iH = solveLP(c0, A0, b0, d0, u0, B, S1; invB=invB, q=q, tol=tol)
+    q = x[B]
+    f, x, invB, iH = solveLP(c0, A0, b0, d0, u0, B, S1; invB=invB, q=q, tol=tol)
 
     #display((N0, M0, B, iH))    # λ₊ may have infitely many solution, since  λ=λ₊-λ₋, λ₊ and λ₋ can be shifted by any finite number simultaneously
 
@@ -657,12 +658,16 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
     #HMEP, HMFP (Highest Mean Frontier Portfolio), or HVEP (Highest Variance Efficient Portfolio), >=99.9% hit
 
     (; u, d) = PS
-    (; tolS, muShft) = nS
-
+    #(; tolS, muShft) = nS
+    tolS = nS.tolS
 
     S, iH, x, f = SimplexLP(PS; settings=settingsLP, min=false)
+    if iH == 0
+        error("empty feasible region")
+    end
 
-    if length(iH) == 0  #unique solution
+    if iH == 1  #unique solution
+        #if length(iH) == 0  #unique solution
         if computeCL!(aCL, S, PS, nS)
             return true     #>=99.9% done
         else    #>=0.09%
