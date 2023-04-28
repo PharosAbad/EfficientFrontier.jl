@@ -64,7 +64,7 @@ function cDantzigLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
     F = trues(N)
     F[B] .= false
     gt = zeros(T, M)
-    ip = zeros(Int64, M)    #tracking the rows of p
+    ip = zeros(Int, M)    #tracking the rows of p
     Sb = fill(DN, M)    #State of leaving to be
 
     cA = zeros(T, N)    #norm of each column of A
@@ -234,7 +234,7 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
     F = trues(N)
     F[B] .= false
     gt = zeros(T, M)    #theta
-    ip = zeros(Int64, M)    #tracking the rows of p
+    ip = zeros(Int, M)    #tracking the rows of p
     Sb = fill(DN, M)    #State of leaving to be
 
     x = zeros(T, N)
@@ -244,8 +244,8 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
     Y = invB * A[:, F]
     h = c[F] - Y' * c[B]
     vS = S[F]   #State of leaving to be, for each candidate k
-    g = zeros(N - M)    #theta for each candidate k
-    gi = zeros(Int64, N - M)    #min subscrip for theta for each candidate k
+    g = zeros(T, N - M)    #theta for each candidate k
+    ig = zeros(Int, N - M)    #min subscrip for theta for each candidate k
     #vD = falses(N - M)  #DN or not, for each candidate k
     ud = u - d
     du = -ud
@@ -318,18 +318,18 @@ function maxImprvLP(c, A, b, d, u, B, S; invB, q, tol=2^-26)
                     ip[l] = -2
                 end
             end
-            gi[n] = ip[l]
+            ig[n] = ip[l]
             vS[n] = Sb[l]
         end
         k = getfield(findmax(abs.(h[ih] .* g[1:nH])), 2)
-        l = gi[k]
+        l = ig[k]
         if l < 0 && isinf(u[k])
             error("infeasible or unbounded")
         end
 
         #kd = vD[k]
         p = P[:, k]
-        gl = g[k]
+        #gl = g[k]
         Sl = vS[k]
         k = iH[k]   #entering index
         if l == -1  #flip the sate
@@ -394,7 +394,7 @@ function SimplexLP(PS::Problem{T}; settings=Settings(PS), min=true) where {T}
         solveLP = maxImprvLP
     end
 
-    Ms = M + J
+    Ms = M + J  #convert Gz<=g to equality
     Ns = N + J
     S = fill(DN, Ms + Ns)
     B = collect(Ns .+ (1:Ms))
@@ -416,7 +416,7 @@ function SimplexLP(PS::Problem{T}; settings=Settings(PS), min=true) where {T}
     end
     #q = abs.(As * ds - bs)
     q = abs.(q - bs)
-    c1 = [zeros(T, Ns); fill(one(T), Ms)]   #我的　模型　是　min
+    c1 = [zeros(T, Ns); fill(one(T), Ms)]   #灯塔的　模型　是　min
     A1 = [As invB]
     b1 = bs
     d1 = [ds; zeros(T, Ms)]

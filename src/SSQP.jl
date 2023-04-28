@@ -102,8 +102,10 @@ function QP(mu::T, P::Problem{T}) where {T}
     (; E, V, u, d, G, g, A, b, N, M, J) = P
     q = zeros(T, N)
     M += 1
-    Am = [E'; A]
-    bm = [mu; b]
+    #Am = [E'; A]
+    #bm = [mu; b]
+    Am = [A; E']
+    bm = [b; mu]
     return QP(V, Am, G, q, bm, g, d, u, N, M, J)
 end
 
@@ -121,18 +123,18 @@ end
 
 kwargs are from the fields of Settings{T<:AbstractFloat} for Float64 and BigFloat
 
-            maxIter::Int64      #7777
-            tol::T              #2^-26 ≈ 1.5e-8  general scalar
-            tolNorm::T          #2^-26 ≈ 1.5e-8  for norms
-
+            maxIter::Int        #7777
+            tol::T              #2^-26 ≈ 1.5e-8   general scalar
+            tolNorm::T          #2^-26 ≈ 1.5e-8   for norms
+            tolG::T             #2^-33 ≈ 1.2e-10  for Greeks (beta and gamma) "portfolio weights"
 
 See also [`QP`](@ref), [`solveQP`](@ref)
 """
 struct Settings{T<:AbstractFloat}
-    maxIter::Int64  #7777
+    maxIter::Int  #7777
     tol::T          #2^-26
     tolNorm::T      #2^-26
-    tolG::T         #2^-27 for Greeks (beta and gamma)
+    tolG::T         #2^-33 for Greeks (beta and gamma)
 end
 
 Settings(; kwargs...) = Settings{Float64}(; kwargs...)
@@ -140,14 +142,14 @@ Settings(; kwargs...) = Settings{Float64}(; kwargs...)
 function Settings{Float64}(; maxIter=7777,
     tol=2^-26,
     tolNorm=2^-26,
-    tolG=2^-27)
+    tolG=2^-33)
     Settings{Float64}(maxIter, tol, tolNorm, tolG)
 end
 
 function Settings{BigFloat}(; maxIter=7777,
     tol=BigFloat(2)^-76,
     tolNorm=BigFloat(2)^-76,
-    tolG=BigFloat(2)^-77)
+    tolG=BigFloat(2)^-87)
     Settings{BigFloat}(maxIter, tol, tolNorm, tolG)
 end
 
@@ -321,7 +323,7 @@ function KKTchk!(S, F, B, Eg, gamma, alphaL, AE, GE, idAE, ra, N, M, tolG::T) wh
         iE = zeros(Int, JE)
         iR = findall(ra .> M)
         iE[idAE[ra[iR]]] = iR
-        Lda = zeros(JE)
+        Lda = zeros(T, JE)
         for j in 1:JE
             k = iE[j]
             if k == 0
@@ -462,12 +464,19 @@ function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
         p = alpha - z[F]
 
         #direction p ≠ 0
-        if norm(p) > tolNorm
+        if norm(p, Inf) > tolG  #= IMPORTANT: in theory, norm(p, Inf)=0  == norm(p)=0, but in numerical computation, NO!  p = (e/2)*1,  norm(p) = (e/2)*sqrt(N) > e if N>4 =#
+            #if norm(p) > tolNorm
             status = aStep!(p, z, S, F, Og, alpha, G, g, d, u, fu, fd, N, J, tol)
             if status < 0
                 continue
             end
+        #else
+            #z[F] = alpha
         end
+
+        #= if iter >= 61
+            display(iter)
+        end =#
 
         #direction p = 0
         #α_{λ}=-C(T′c+b_{E})
@@ -476,7 +485,7 @@ function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
         #z[F] = alpha
         status = KKTchk!(S, F, B, Eg, gamma, alphaL, AE, GE, idAE, ra, N, M, tolG)
         if status > 0
-             ik = findall(F)
+            #= ik = findall(F)
             for k in ik #check fake IN
                 if abs(z[k] - d[k]) < tol
                     z[k] = d[k]
@@ -485,11 +494,56 @@ function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
                     z[k] = u[k]
                     S[k] = UP
                 end
-            end
+            end =#
+
+            #should we compute the final analytical z[I]?
+            #z1 = copy(z)
+            #z1[F] = alphaCal(F, z, Se, V, A, G, q, b, g, tolNorm)
+            #z[F] = (z[F]+z1[F])/2
+
             return z, S, iter
         end
     end
 end
+
+#=
+function alphaCal(F, z, Se, V, A, G, q, b, g, tolNorm)
+    B = .!F
+    Eg = (Se .== EO)
+    GE = @view G[Eg, :]
+    AE = vcat(A[:, F], GE[:, F])
+
+    zB = z[B]
+    AB = vcat(A[:, B], GE[:, B])
+    bE = vcat(b, g[Eg]) - AB * zB
+
+    ra = getRows(AE, tolNorm)
+    W = length(ra)
+    if W < length(bE)
+        rb = getRows([AE bE], tolNorm)
+        if W != length(rb)
+            return z, S, 0    #infeasible
+        end
+        AE = AE[ra, :]
+        bE = bE[ra]
+        AB = AB[ra, :]
+    end
+
+    iV = inv(cholesky(V[F, F]))
+    VBF = V[B, F]
+    c = VBF' * zB + q[F]
+    mT = iV * AE'   #T=V_{I}⁻¹A_{I}′
+    C = AE * mT
+    C = (C + C') / 2
+    C = inv(cholesky(C))
+    TC = mT * C
+    VQ = iV - mT * TC'    #Q=I-A_{I}′CT′   V_{I}⁻¹Q=V_{I}⁻¹-TCT′
+    alpha = TC * bE - VQ * c    #α=TCb_{E}-V_{I}⁻¹Qc
+    #p = alpha - z[F]
+    return alpha
+end
+=#
+
 
 """
         S, x0 = initSSQP(Q::QP{T}, settingsLP)
@@ -527,7 +581,7 @@ function initSSQP(Q::QP{T}, settingsLP) where {T}
     end
     #q = abs.(As * ds - bs)
     q = abs.(q - bs)
-    c1 = [zeros(T, Ns); fill(one(T), Ms)]   #我的　模型　是　min
+    c1 = [zeros(T, Ns); fill(one(T), Ms)]   #灯塔的　模型　是　min
     A1 = [As invB]
     b1 = bs
     d1 = [ds; zeros(T, Ms)]
@@ -601,7 +655,7 @@ function initQP(Q::QP{T}, settingsLP) where {T}
         invB[j, j] = b0[j] >= q[j] ? one(T) : -one(T)
     end
     q = abs.(q - b0)
-    c1 = [zeros(T, N0); fill(one(T), M0)]   #我的　模型　是　min
+    c1 = [zeros(T, N0); fill(one(T), M0)]   #灯塔的　模型　是　min
     A1 = [A0 invB]
     b1 = b0
     d1 = [d0; zeros(T, M0)]

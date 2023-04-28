@@ -74,7 +74,7 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
     https://scicomp.stackexchange.com/a/35645	best method is really application dependent
 
     VF = @view V[F, F]
-    #iV = inv(VF)   #ERROR: MethodError: no method matching factorize(::SubArray{Float64, 2, Matrix{Float64}, Tuple{Vector{Int64}, Vector{Int64}}, false})
+    #iV = inv(VF)   #ERROR: MethodError: no method matching factorize(::SubArray{Float64, 2, Matrix{Float64}, Tuple{Vector{Int}, Vector{Int}}, false})
     iV = inv(Symmetric(VF))
     =#
     VBF = @view V[B, F]
@@ -195,8 +195,8 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
         iE = zeros(Int, JE)
         iR = findall(rb .> M)
         iE[idAE[rb[iR]]] = iR
-        Lda = zeros(JE)
-        Ldb = zeros(JE)
+        Lda = zeros(T, JE)
+        Ldb = zeros(T, JE)
 
         for j in 1:JE
             k = iE[j]
@@ -405,7 +405,7 @@ function joinCL(P::Problem{T}, S; incL=false, settingsLP=SettingsLP(P)) where {T
     S1[B] .= IN
     invB = Matrix{T}(I, M0, M0)
     A1 = [A0 invB]
-    c1 = [zeros(T, N0); fill(one(T), M0)]   #我的　模型　是　min
+    c1 = [zeros(T, N0); fill(one(T), M0)]   #灯塔的　模型　是　min
     b1 = b0
     d1 = [d0; zeros(T, M0)]
     u1 = [u0; fill(Inf, M0)]

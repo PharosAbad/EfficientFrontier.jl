@@ -634,7 +634,7 @@ function asQP(PS::Problem{T}, L::T=0.0; settingsLP=SettingsLP(PS)) where {T}
     end
     #q = abs.(As * ds - bs)
     q = abs.(q - bs)
-    c1 = [zeros(T, Ns); fill(one(T), Ms)]   #我的　模型　是　min
+    c1 = [zeros(T, Ns); fill(one(T), Ms)]   #灯塔的　模型　是　min
     A1 = [As invB]
     b1 = bs
     d1 = [ds; zeros(T, Ms)]
@@ -695,7 +695,7 @@ function asQP(mu::T, PS::Problem{T}; settingsLP=SettingsLP(PS)) where {T}
     end
     #q = abs.(As * ds - bs)
     q = abs.(q - bs)
-    c1 = [zeros(T, Ns); fill(one(T), Ms)]   #我的　模型　是　min
+    c1 = [zeros(T, Ns); fill(one(T), Ms)]   #灯塔的　模型　是　min
     A1 = [As invB]
     b1 = bs
     d1 = [ds; zeros(T, Ms)]

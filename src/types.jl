@@ -298,7 +298,7 @@ Efficient Frontier, with fields:
             mu::Vector{Float64}     #higher mean
             sgm::Vector{Float64}    #higher sigma
             Z::Matrix{Float64}      #weights, each corner portfolio in one row
-            ic::Vector{Int64}       #id of related critical line
+            ic::Vector{Int}       #id of related critical line
 
 """
 struct sEF    #Efficient Frontier       Float64 is OK
@@ -306,7 +306,7 @@ struct sEF    #Efficient Frontier       Float64 is OK
     mu::Vector{Float64}     #higher mean
     sgm::Vector{Float64}    #higher sigma
     Z::Matrix{Float64}
-    ic::Vector{Int64}
+    ic::Vector{Int}
 end
 
 #=

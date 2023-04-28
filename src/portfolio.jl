@@ -12,7 +12,7 @@ the return aEF has the follwing structure
             mu::Vector{Float64}     #higher mean
             sgm::Vector{Float64}    #higher sigma
             Z::Matrix{Float64}      #weights, each corner portfolio in one row
-            ic::Vector{Int64}       #id of related critical line
+            ic::Vector{Int}         #id of related critical line
         end
 
 See also [`EfficientFrontier.ECL`](@ref), [`ePortfolio`](@ref), [`Problem`](@ref), [`Settings`](@ref)
@@ -31,11 +31,11 @@ function eFrontier(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {
 
     idW = findall(W)
     nP = length(idW)
-    Ap = zeros(nP + 1, 3)
-    mu = zeros(nP + 1)
-    sgm = zeros(nP + 1)
-    Z = zeros(nP + 1, N)
-    z1 = zeros(N)
+    Ap = zeros(T, nP + 1, 3)
+    mu = zeros(T, nP + 1)
+    sgm = zeros(T, nP + 1)
+    Z = zeros(T, nP + 1, N)
+    z1 = zeros(T, N)
 
     @inbounds for k in 1:nP
         t = aCL[idW[k]]
@@ -86,7 +86,7 @@ function eFrontier(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS)) where {
         Ap[:, 2] *= s1
         Ap[:, 3] *= eV
     end
-    return sEF(Ap, mu, sgm, Z, [idW; idW[end]])
+    return sEF(convert(Matrix{Float64}, Ap), convert(Vector{Float64}, mu), convert(Vector{Float64}, sgm), convert(Matrix{Float64}, Z), [idW; idW[end]])
 end
 
 
@@ -99,12 +99,12 @@ end
         z = ePortfolio(P::Problem, L, aCL::Vector{sCL})
         z = ePortfolio(P::Problem, L::T=0.0; nS=Settings(P), settings, settingsLP)      #one-step, given L
 
-`ePortfolio(mu, aEF)` compute the efficient portfolio given mu when Efficient Frontier is known, returns portfolio weights z (Nx1 vector of NaN if mu is out of range)
+`ePortfolio(mu::Float64, aEF)` compute the efficient portfolio given mu when Efficient Frontier is known, returns portfolio weights z (Nx1 vector of NaN if mu is out of range)
 
-`ePortfolio(mu, P; nS=Settings(P))` compute the efficient portfolio for `P` given mu, returns portfolio weights z (Nx1 vector of NaN if mu is out of range)
-If mu is a vector, z is a matrix, its row k is the portfolio weights for mu[k]. Here you can not set `init::Function`
+`ePortfolio(mu, P; nS=Settings(P))` compute the efficient portfolio for `P` given mu::Float64, returns portfolio weights z (Nx1 vector of NaN if mu is out of range)
+If mu is a ::Vector{Float64}, z is a matrix, its row k is the portfolio weights for mu[k]. Here you can not set `init::Function`
 
-`ePortfolio(P, L, aCL)` compute the efficient portfolio for `P` with known Critical Lines `aCL`, given `L`
+`ePortfolio(P, L::T, aCL)` compute the efficient portfolio for `P` with known Critical Lines `aCL`, given `L::T` (Float64, BigFloat)
 
 `ePortfolio(P::Problem, L::T=0.0; nS=Settings(P), settings, settingsLP)` compute the efficient portfolio for `P` given `L`
 
@@ -114,7 +114,7 @@ See also [`EfficientFrontier.ECL`](@ref), [`eFrontier`](@ref), [`Problem`](@ref)
 function ePortfolio(mu::Float64, aEF::sEF)
     u = aEF.mu
     Z = aEF.Z
-    z = zeros(size(Z, 2))
+    z = zeros(Float64, size(Z, 2))
     if mu > u[1] || mu < u[end]
         fill!(z, NaN)
         return z
@@ -177,7 +177,7 @@ function ePortfolio(P::Problem{T}, L::T, aCL::Vector{sCL{T}}) where {T}
         S = @view t.S[1:N]
     end
     #S = @view t.S[1:N]
-    z = zeros(N)
+    z = zeros(T, N)
     U = (S .== UP)
     D = (S .== DN)
 
