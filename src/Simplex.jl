@@ -72,6 +72,7 @@ function cDantzigLP(c::Vector{T}, A, b, d, u, B, S; invB, q, tol=2^-26) where {T
     for k in 1:N
         cA[k] = norm(A[:, k])
     end
+    #ldr = all(cA .> tol)    #some cols maybe zero. EfficientFrontier do not have this prob
 
     x = zeros(T, N)
     x[S.==UP] .= u[S.==UP]
@@ -123,7 +124,8 @@ function cDantzigLP(c::Vector{T}, A, b, d, u, B, S; invB, q, tol=2^-26) where {T
                 if fu[k]    #DN -> UP
                     l = -1
                 else    # unbounded
-                    return c' * x, x, invB, 3
+                    #return c' * x, x, invB, 3
+                    return 3, x, invB
                 end
             else
                 (gl, l) = findmin(gt[1:m])  #gl>0
@@ -136,7 +138,8 @@ function cDantzigLP(c::Vector{T}, A, b, d, u, B, S; invB, q, tol=2^-26) where {T
                     end
                 else
                     if isinf(gl) #unbounded
-                        return c' * x, x, invB, 3
+                        #return c' * x, x, invB, 3
+                        return 3, x, invB
                     end
                     Sl = Sb[l]
                     l = ip[l]
@@ -216,7 +219,8 @@ function cDantzigLP(c::Vector{T}, A, b, d, u, B, S; invB, q, tol=2^-26) where {T
 
     status = length(ih) > 0 ? 2 : 1
     #return c' * x, x, invB, 2  #infinitely many solutions
-    return c' * x, x, invB, status
+    #return c' * x, x, invB, status
+    return status, x, invB
 end
 
 
@@ -295,7 +299,8 @@ function maxImprvLP(c::Vector{T}, A, b, d, u, B, S; invB, q, tol=2^-26) where {T
                         l = 1
                         ip[1] = -1
                     else    # unbounded
-                        return c' * x, x, invB, 3
+                        #return c' * x, x, invB, 3
+                        return 3, x, invB
                     end
                 else
                     (g[n], l) = findmin(gt[1:m])
@@ -307,7 +312,8 @@ function maxImprvLP(c::Vector{T}, A, b, d, u, B, S; invB, q, tol=2^-26) where {T
                         end
                     else
                         if isinf(g[n])  #unbounded
-                            return c' * x, x, invB, 3
+                            #return c' * x, x, invB, 3
+                            return 3, x, invB
                         end
                     end
                 end
@@ -395,7 +401,8 @@ function maxImprvLP(c::Vector{T}, A, b, d, u, B, S; invB, q, tol=2^-26) where {T
 
     status = length(ih) > 0 ? 2 : 1
     #return c' * x, x, invB, 2  #infinitely many solutions
-    return c' * x, x, invB, status
+    #return c' * x, x, invB, status
+    return status, x, invB
 
 end
 
@@ -447,10 +454,13 @@ function SimplexLP(PS::Problem{T}; settings=Settings(PS), min=true) where {T}
     u1 = [us; fill(Inf, Ms)]
 
     #f, x, q, B, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
-    f, x, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+    #f, x, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+    iH, x, invB = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+    #f = x' * c1
+    f = sum(x[Ns+1:end])
     if f > tol
         #error("empty feasible region")
-        return S, 0, x, f
+        return S, 0, x  #, f
     end
 
     #display("--- --- phase 2 --- ---")
@@ -462,18 +472,18 @@ function SimplexLP(PS::Problem{T}; settings=Settings(PS), min=true) where {T}
     q = x[B]
     #f, x, q, B, invB, iH = solveLP(-Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
     #f, x, q, B, invB, iH = solveLP(Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
-    f, x, invB, iH = solveLP(Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
-    if !min
+    #f, x, invB, iH = solveLP(Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
+    iH, x, invB = solveLP(Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
+    #= if !min
         f = -f
-    end
+    end =#
 
     for k in N+1:N+J
         S[k] = S[k] == IN ? OE : EO
     end
 
-    #return S, iH, q, f
     x = x[1:N]
-    return S, iH, x, f
+    return S, iH, x #, f
 end
 
 

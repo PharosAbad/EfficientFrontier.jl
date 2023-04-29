@@ -598,14 +598,17 @@ See also [`Problem`](@ref), [`SettingsLP`](@ref), [`asCL!`](@ref)
 """
 function asQP(PS::Problem{T}, L::T=0.0; settingsLP=SettingsLP(PS)) where {T}
 
+    E = PS.E
     if isinf(L)
         min = L == Inf ? false : true
-        mu = getfield(SimplexLP(PS; settings=settingsLP, min=min), 4)
+        #mu = getfield(SimplexLP(PS; settings=settingsLP, min=min), 4)
+        mu = E'*getfield(SimplexLP(PS; settings=settingsLP, min=min), 3)
         return asQP(mu, PS; settingsLP=settingsLP)
     end
 
     #finite L
-    (; E, V, u, d, G, g, A, b, N, M, J) = PS
+    #(; E, V, u, d, G, g, A, b, N, M, J) = PS
+    (; V, u, d, G, g, A, b, N, M, J) = PS
     (; tol, rule) = settingsLP
 
     solveLP = cDantzigLP
@@ -640,7 +643,8 @@ function asQP(PS::Problem{T}, L::T=0.0; settingsLP=SettingsLP(PS)) where {T}
     d1 = [ds; zeros(T, Ms)]
     u1 = [us; fill(Inf, Ms)]
 
-    f, x, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+    iH, x, invB = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+    f = sum(x[Ns+1:end])
     if f > tol
         error("feasible region is empty")
     end
@@ -669,7 +673,8 @@ function asQP(mu::T, PS::Problem{T}; settingsLP=SettingsLP(PS)) where {T}
 
     if isinf(mu)
         min = mu == Inf ? false : true
-        mu = getfield(SimplexLP(PS; settings=settingsLP, min=min), 4)
+        #mu = getfield(SimplexLP(PS; settings=settingsLP, min=min), 4)
+        mu = E'*getfield(SimplexLP(PS; settings=settingsLP, min=min), 3)
     end
 
     #An initial feasible point by performing Phase-I Simplex on the polyhedron
@@ -700,7 +705,8 @@ function asQP(mu::T, PS::Problem{T}; settingsLP=SettingsLP(PS)) where {T}
     d1 = [ds; zeros(T, Ms)]
     u1 = [us; fill(Inf, Ms)]
 
-    f, x, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+    iH, x, invB = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+    f = sum(x[Ns+1:end])
     if f > tol
         error("feasible region is empty")
     end

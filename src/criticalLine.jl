@@ -414,8 +414,9 @@ function joinCL(P::Problem{T}, S; incL=false, settingsLP=SettingsLP(P)) where {T
         invB[j, j] = b0[j] >= q[j] ? one(T) : -one(T)
     end
     q = abs.(q - b0)
-    f, x, invB, iH = solveLP(c1, A1, b1, d1, u1, B, S1; invB=invB, q=q, tol=tol)
+    iH, x, invB = solveLP(c1, A1, b1, d1, u1, B, S1; invB=invB, q=q, tol=tol)
 
+    f = sum(x[N0+1:end])
     if f > tol
         error("empty feasible region")
     end
@@ -426,10 +427,12 @@ function joinCL(P::Problem{T}, S; incL=false, settingsLP=SettingsLP(P)) where {T
         c0 = -c0
     end
     q = x[B]
-    f, x, invB, iH = solveLP(c0, A0, b0, d0, u0, B, S1; invB=invB, q=q, tol=tol)
+    iH, x, invB = solveLP(c0, A0, b0, d0, u0, B, S1; invB=invB, q=q, tol=tol)
 
     #display((N0, M0, B, iH))    # λ₊ may have infitely many solution, since  λ=λ₊-λ₋, λ₊ and λ₋ can be shifted by any finite number simultaneously
 
+    #f = c0' * x
+    f = x[N+JE+1]
     if incL
         f = -f
     end
@@ -483,7 +486,8 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
 
             #degenerated
             if incL #dont go up if hit HMFP
-                f = getfield(SimplexLP(PS; settings=settingsLP, min=false), 4)
+                #f = getfield(SimplexLP(PS; settings=settingsLP, min=false), 4)
+                f = PS.E' * getfield(SimplexLP(PS; settings=settingsLP, min=false), 3)
                 mu = getMu(PS, t, incL)
                 if abs(mu - f) < tol  #hit HMFP=HVEP
                     break
@@ -662,7 +666,7 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
     #(; tolS, muShft) = nS
     tolS = nS.tolS
 
-    S, iH, x, f = SimplexLP(PS; settings=settingsLP, min=false)
+    S, iH, x = SimplexLP(PS; settings=settingsLP, min=false)
     if iH == 0
         error("empty feasible region")
     end
@@ -697,6 +701,7 @@ function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settin
         #Q = QP(f - muShft, PS)
         #z, S, iter = solveQP(Q; settings=settings, settingsLP=settingsLP)
 
+        f = PS.E' * x
         Q = QP(f, PS)   # to do: we may search μ in QP(μ, PS) until one is found
         #z, S, iter = solveQP(Q; settings=settings, settingsLP=settingsLP, x0=x, S=S)
         z, S, iter = solveQP(Q, S, x; settings=settings)

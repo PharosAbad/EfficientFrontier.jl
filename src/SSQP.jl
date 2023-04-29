@@ -593,7 +593,8 @@ function initSSQP(Q::QP{T}, settingsLP) where {T}
     d1 = [ds; zeros(T, Ms)]
     u1 = [us; fill(Inf, Ms)]
 
-    f, x, _invB, _iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+    _iH, x, _invB = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+    f = sum(x[Ns+1:end])
     if f > tol
         error("feasible region is empty")
     end
@@ -669,8 +670,8 @@ function initQP(Q::QP{T}, settingsLP) where {T}
 
 
     #f, x, _q, _invB, _iH = EfficientFrontier.Simplex.cDantzigLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
-    f, x0, _invB, _iH = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
-
+    _iH, x0, _invB = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
+    f = sum(x[N0+1:end])
     if f > tol
         #if abs(f) > tol
         #display(f)
