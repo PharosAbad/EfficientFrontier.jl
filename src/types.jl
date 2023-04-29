@@ -175,10 +175,11 @@ function Problem(E::Vector{T}, V; N=length(E),
     #norm(A[1,:] .- b[1]) == 0 || error("First equality constraint must be 1'z = 1")
     sum(abs.(A[1, :] .- b[1])) == 0 || error("First equality constraint must be 1'z = 1")
 
-    #check feasibility of Ax=b
+    #check feasibility and redundancy of Ax=b
     rb = rank([A b])
     @assert rb == rank(A) "infeasible: Ax=b"
-    @assert rb == length(getRows(A)) "redundant rows in Ax=b"
+    #@assert rb == length(getRows(A)) "redundant rows in Ax=b"
+    @assert M == rb "redundant rows in Ax=b"       #full row rank
 
 
     #d[isinf.(d)] .= -1.0    #replace -Inf in lower bound by -1.0
@@ -239,7 +240,7 @@ end
 kwargs are from the fields of Settings{T<:AbstractFloat} for Float64 and BigFloat
 
             tol::T         #2^-26 ≈ 1.5e-8  general scalar
-            tolNorm::T     #2^-26 ≈ 1.5e-8  for norms
+            tolN::T        #2^-26 ≈ 1.5e-8  for norms
             tolS::T        #2^-26 ≈ 1.5e-8  for identifying S
             tolL::T        #2^-26 ≈ 1.5e-8  for L
             tolG::T        #2^-27 ≈ 7.5e-9  for Greeks (beta and gamma)
@@ -248,7 +249,7 @@ kwargs are from the fields of Settings{T<:AbstractFloat} for Float64 and BigFloa
 """
 struct Settings{T<:AbstractFloat}
     tol::T         #general scalar
-    tolNorm::T     #for norms
+    tolN::T        #for norms
     tolS::T        #for identifying S
     tolL::T        #for L
     tolG::T        #for Greeks (beta and gamma)
@@ -258,18 +259,18 @@ end
 
 Settings(; kwargs...) = Settings{Float64}(; kwargs...)
 function Settings{Float64}(; tol=2^-26,
-    tolNorm=2^-26,
+    tolN=2^-26,
     tolS=2^-26,
     tolL=2^-26,
     tolG=2^-27,
     muShft=2^-18) #,
     #rule=:Dantzig)
-    #Settings{Float64}(tol, tolNorm, tolS, tolL, tolG, muShft, rule)
-    Settings{Float64}(tol, tolNorm, tolS, tolL, tolG, muShft)
+    #Settings{Float64}(tol, tolN, tolS, tolL, tolG, muShft, rule)
+    Settings{Float64}(tol, tolN, tolS, tolL, tolG, muShft)
 end
 
 function Settings{BigFloat}(; tol=BigFloat(2)^-76,
-    tolNorm=BigFloat(2)^-76,
+    tolN=BigFloat(2)^-76,
     #tolS = BigFloat(2)^-76,     #BigFloat(2)^-26
     tolS=BigFloat(2)^-26, #waiting for Clarabel.Settings to update for BigFloat
     tolL=BigFloat(2)^-76,
@@ -277,8 +278,8 @@ function Settings{BigFloat}(; tol=BigFloat(2)^-76,
     #muShft = BigFloat(2)^-27)
     muShft=BigFloat(2)^-18)  #,
     #rule=:Dantzig)
-    #Settings{BigFloat}(tol, tolNorm, tolS, tolL, tolG, muShft, rule)
-    Settings{BigFloat}(tol, tolNorm, tolS, tolL, tolG, muShft)
+    #Settings{BigFloat}(tol, tolN, tolS, tolL, tolG, muShft, rule)
+    Settings{BigFloat}(tol, tolN, tolS, tolL, tolG, muShft)
 end
 
 function Settings(P::Problem{T}; kwargs...) where {T}

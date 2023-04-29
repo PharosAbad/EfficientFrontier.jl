@@ -119,21 +119,6 @@ function cDantzigLP(c::Vector{T}, A, b, d, u, B, S; invB, q, tol=2^-26) where {T
                 end
             end
 
-            #= g0 = ud[k] #u[k] - d[k]
-            if m == 0
-                if isfinite(g0) #DN -> UP
-                    l = -1
-                else
-                    error("infeasible or unbounded")
-                end
-            else
-                (gl, l) = findmin(gt[1:m])
-                Sl = Sb[l]
-                l = ip[l]
-                if gl > g0
-                    l = -1
-                end
-            end =#
             if m == 0   # p=0 => A[:,k]=0
                 if fu[k]    #DN -> UP
                     l = -1
@@ -173,21 +158,7 @@ function cDantzigLP(c::Vector{T}, A, b, d, u, B, S; invB, q, tol=2^-26) where {T
                     Sb[m] = DN
                 end
             end
-            #= g0 = du[k] #d[k] - u[k]
-            if m == 0
-                if isfinite(g0) #UP -> DN
-                    l = -2
-                else
-                    error("infeasible or unbounded")
-                end
-            else
-                (gl, l) = findmax(gt[1:m])
-                Sl = Sb[l]
-                l = ip[l]
-                if gl < g0
-                    l = -2
-                end
-            end =#
+
             if m == 0   # p=0 => A[:,k]=0
                 l = -2  #UP -> DN
             else
@@ -317,13 +288,6 @@ function maxImprvLP(c::Vector{T}, A, b, d, u, B, S; invB, q, tol=2^-26) where {T
                     end
                 end
 
-                #= if m == 0
-                    g[n] = ud[k]
-                    l = 1
-                    ip[1] = -1   #isfinite(u[k]) to flip state, isinf(u[k]) unbounded
-                else
-                    (g[n], l) = findmin(gt[1:m])
-                end =#
                 g0 = ud[k]
                 if m == 0
                     if fu[k]    #DN -> UP
@@ -346,14 +310,6 @@ function maxImprvLP(c::Vector{T}, A, b, d, u, B, S; invB, q, tol=2^-26) where {T
                             return c' * x, x, invB, 3
                         end
                     end
-
-                    #= if isinf(g[n]) && !fu[k] #unbounded
-                        return c' * x, x, invB, 3
-                    end
-                    if g[n] >= g0 #DN -> UP
-                        g[n] = g0
-                        ip[l] = -1
-                    end =#
                 end
 
             else    #UP
@@ -371,18 +327,6 @@ function maxImprvLP(c::Vector{T}, A, b, d, u, B, S; invB, q, tol=2^-26) where {T
                         Sb[m] = DN
                     end
                 end
-
-                #= if m == 0
-                    g[n] = du[k]
-                    l = 1
-                    ip[1] = -2   #isfinite(u[k]) to flip state, isinf(u[k]) unbounded
-                else
-                    (g[n], l) = findmax(gt[1:m])
-                end
-                if g[n] < du[k]
-                    g[n] = du[k]
-                    ip[l] = -2
-                end =#
                 g0 = du[k]  #finite
                 if m == 0
                     g[n] = g0
@@ -390,14 +334,11 @@ function maxImprvLP(c::Vector{T}, A, b, d, u, B, S; invB, q, tol=2^-26) where {T
                     ip[1] = -2  #UP -> DN
                 else
                     (g[n], l) = findmax(gt[1:m])
-                    #(gl, l) = findmax(gt[1:m])  #gl<0
-
                     if g[n] <= g0
                         g[n] = g0
                         ip[l] = -2
                     end
                 end
-
             end
             ig[n] = ip[l]
             vS[n] = Sb[l]

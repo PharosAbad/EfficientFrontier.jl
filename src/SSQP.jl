@@ -70,6 +70,11 @@ function QP(V::Matrix{T}; N=size(V, 1), #N=convert(Int32, size(V, 1)),
     N == size(d, 1) || throw(DimensionMismatch("incompatible dimension: d"))
     N == size(u, 1) || throw(DimensionMismatch("incompatible dimension: u"))
 
+    #check feasibility and redundancy of Ax=b
+    rb = rank([A b])
+    @assert rb == rank(A) "infeasible: Ax=b"
+    @assert M == rb "redundant rows in Ax=b"       #full row rank
+
     iu = u .< d
     if sum(iu) > 0
         @warn "swap the elements where u < d, to make sure u > d"
@@ -125,15 +130,15 @@ kwargs are from the fields of Settings{T<:AbstractFloat} for Float64 and BigFloa
 
             maxIter::Int        #7777
             tol::T              #2^-26 ≈ 1.5e-8   general scalar
-            tolNorm::T          #2^-26 ≈ 1.5e-8   for norms
+            tolN::T             #2^-26 ≈ 1.5e-8   for norms
             tolG::T             #2^-33 ≈ 1.2e-10  for Greeks (beta and gamma) "portfolio weights"
 
 See also [`QP`](@ref), [`solveQP`](@ref)
 """
 struct Settings{T<:AbstractFloat}
-    maxIter::Int  #7777
+    maxIter::Int    #7777
     tol::T          #2^-26
-    tolNorm::T      #2^-26
+    tolN::T         #2^-26
     tolG::T         #2^-33 for Greeks (beta and gamma)
 end
 
@@ -141,16 +146,16 @@ Settings(; kwargs...) = Settings{Float64}(; kwargs...)
 
 function Settings{Float64}(; maxIter=7777,
     tol=2^-26,
-    tolNorm=2^-26,
+    tolN=2^-26,
     tolG=2^-33)
-    Settings{Float64}(maxIter, tol, tolNorm, tolG)
+    Settings{Float64}(maxIter, tol, tolN, tolG)
 end
 
 function Settings{BigFloat}(; maxIter=7777,
     tol=BigFloat(2)^-76,
-    tolNorm=BigFloat(2)^-76,
+    tolN=BigFloat(2)^-76,
     tolG=BigFloat(2)^-87)
-    Settings{BigFloat}(maxIter, tol, tolNorm, tolG)
+    Settings{BigFloat}(maxIter, tol, tolN, tolG)
 end
 
 function Settings(Q::QP{T}; kwargs...) where {T}
@@ -159,7 +164,7 @@ end
 
 
 
-function getRows(A::Matrix{T}, tolNorm=sqrt(eps(T))) where {T}
+function getRows(A::Matrix{T}, tol=sqrt(eps(T))) where {T}
     #indicate the non-redundant rows, the begaining few rows can be zeros (redundant)
     M, N = size(A)
     if N == 0
@@ -175,7 +180,7 @@ function getRows(A::Matrix{T}, tolNorm=sqrt(eps(T))) where {T}
     #find the 1st non-zero row
     for r in 1:M
         v = @view A[r, :]
-        if norm(v) <= tolNorm
+        if norm(v, Inf) <= tol
             continue
         else
             R[r] = true
@@ -189,7 +194,7 @@ function getRows(A::Matrix{T}, tolNorm=sqrt(eps(T))) where {T}
     for r in r1:M
         #v = @view A[r:r, :]
         v = @view A[r, :]
-        if norm(v) > tolNorm && norm(v - H' * (H' \ v)) > tolNorm
+        if norm(v, Inf) > tol && norm(v - H' * (H' \ v), Inf) > tol
             R[r] = true
             H = @view A[R, :]
         end
@@ -401,7 +406,8 @@ end
 
 function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
     (; V, A, G, q, b, g, d, u, N, M, J) = Q
-    (; maxIter, tol, tolNorm, tolG) = settings
+    #(; maxIter, tol, tolN, tolG) = settings
+    (; maxIter, tol, tolG) = settings
 
     fu = u .< Inf   #finite upper bound
     fd = d .> -Inf   #finite lower bound
@@ -439,10 +445,10 @@ function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
         AB = vcat(A[:, B], GE[:, B])
         bE = vcat(b, g[Eg]) - AB * zB
 
-        ra = getRows(AE, tolNorm)
+        ra = getRows(AE, tol)
         W = length(ra)
         if W < length(bE)
-            rb = getRows([AE bE], tolNorm)
+            rb = getRows([AE bE], tol)
             if W != length(rb)
                 return z, S, 0    #infeasible
             end
@@ -465,7 +471,7 @@ function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
 
         #direction p ≠ 0
         if norm(p, Inf) > tolG  #= IMPORTANT: in theory, norm(p, Inf)=0  == norm(p)=0, but in numerical computation, NO!  p = (e/2)*1,  norm(p) = (e/2)*sqrt(N) > e if N>4 =#
-            #if norm(p) > tolNorm
+            #if norm(p) > tolN
             status = aStep!(p, z, S, F, Og, alpha, G, g, d, u, fu, fd, N, J, tol)
             if status < 0
                 continue
@@ -498,7 +504,7 @@ function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
 
             #should we compute the final analytical z[I]?
             #z1 = copy(z)
-            #z1[F] = alphaCal(F, z, Se, V, A, G, q, b, g, tolNorm)
+            #z1[F] = alphaCal(F, z, Se, V, A, G, q, b, g, tol)
             #z[F] = (z[F]+z1[F])/2
 
             return z, S, iter
@@ -507,7 +513,7 @@ function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
 end
 
 #=
-function alphaCal(F, z, Se, V, A, G, q, b, g, tolNorm)
+function alphaCal(F, z, Se, V, A, G, q, b, g, tol)
     B = .!F
     Eg = (Se .== EO)
     GE = @view G[Eg, :]
@@ -517,10 +523,10 @@ function alphaCal(F, z, Se, V, A, G, q, b, g, tolNorm)
     AB = vcat(A[:, B], GE[:, B])
     bE = vcat(b, g[Eg]) - AB * zB
 
-    ra = getRows(AE, tolNorm)
+    ra = getRows(AE, tol)
     W = length(ra)
     if W < length(bE)
-        rb = getRows([AE bE], tolNorm)
+        rb = getRows([AE bE], tol)
         if W != length(rb)
             return z, S, 0    #infeasible
         end
