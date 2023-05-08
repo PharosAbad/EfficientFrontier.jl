@@ -491,7 +491,7 @@ function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
         #z[F] = alpha
         status = KKTchk!(S, F, B, Eg, gamma, alphaL, AE, GE, idAE, ra, N, M, tolG)
         if status > 0
-            #= ik = findall(F)
+            ik = findall(F)
             for k in ik #check fake IN
                 if abs(z[k] - d[k]) < tol
                     z[k] = d[k]
@@ -500,7 +500,7 @@ function solveQP(Q::QP{T}, S, x0; settings=Settings(Q)) where {T}
                     z[k] = u[k]
                     S[k] = UP
                 end
-            end =#
+            end
 
             #should we compute the final analytical z[I]?
             #z1 = copy(z)
@@ -555,7 +555,7 @@ end
         S, x0 = initSSQP(Q::QP{T}, settingsLP)
 
 
-do not handle free variables such that -∞ < x < +∞. OK for EfficientFrontier
+do not handle free variables such that -∞ < x < +∞. and d shoue be finite. OK for EfficientFrontier
 """
 function initSSQP(Q::QP{T}, settingsLP) where {T}
     (; A, G, b, g, d, u, N, M, J) = Q

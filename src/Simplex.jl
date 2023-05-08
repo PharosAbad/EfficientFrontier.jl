@@ -193,7 +193,8 @@ function cDantzigLP(c::Vector{T}, A, b, d, u, B, S; invB, q, tol=2^-26) where {T
 
             #B = sort(B)
             sort!(B)
-            invB = inv(A[:, B])
+            #invB = inv(A[:, B])
+            invB = inv(lu(A[:, B]))
 
             S[k] = IN
             S[l] = Sl
@@ -377,7 +378,8 @@ function maxImprvLP(c::Vector{T}, A, b, d, u, B, S; invB, q, tol=2^-26) where {T
 
             #B = sort(B)
             sort!(B)
-            invB = inv(A[:, B])
+            #invB = inv(A[:, B])
+            invB = inv(lu(A[:, B]))
 
             S[k] = IN
             S[l] = Sl
