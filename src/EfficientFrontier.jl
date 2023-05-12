@@ -12,7 +12,7 @@ import StatusSwitchingQP: SimplexLP, QP
 
 export Status, IN, DN, UP, OE, EO, Event, sCL, Problem, Settings, sEF, SettingsQP, SettingsLP
 export computeCL!, ECL!, cbCL!, eFrontier, ePortfolio, mu2L, L2mu
-export SimplexLP, QP
+export SimplexLP, QP, solveQP
 
 include("./types.jl")
 
