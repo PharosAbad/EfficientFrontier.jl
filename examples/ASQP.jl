@@ -9,7 +9,7 @@ using Polynomials
 using EfficientFrontier: EfficientFrontier, Problem, Status, Event, sCL, IN, DN, UP, OE, EO, computeCL!, Settings, SettingsLP
 export solveASQP, asQP, asCL!, getSx
 
-using EfficientFrontier.Simplex: cDantzigLP, maxImprvLP
+using StatusSwitchingQP.Simplex: cDantzigLP, maxImprvLP
 
 
 mutable struct UpdatableQR{T} <: Factorization{T}
@@ -602,7 +602,7 @@ function asQP(PS::Problem{T}, L::T=0.0; settingsLP=SettingsLP(PS)) where {T}
     if isinf(L)
         min = L == Inf ? false : true
         #mu = getfield(SimplexLP(PS; settings=settingsLP, min=min), 4)
-        mu = E'*getfield(SimplexLP(PS; settings=settingsLP, min=min), 3)
+        mu = E'*getfield(SimplexLP(PS; settings=settingsLP, min=min), 1)
         return asQP(mu, PS; settingsLP=settingsLP)
     end
 
@@ -674,7 +674,7 @@ function asQP(mu::T, PS::Problem{T}; settingsLP=SettingsLP(PS)) where {T}
     if isinf(mu)
         min = mu == Inf ? false : true
         #mu = getfield(SimplexLP(PS; settings=settingsLP, min=min), 4)
-        mu = E'*getfield(SimplexLP(PS; settings=settingsLP, min=min), 3)
+        mu = E'*getfield(SimplexLP(PS; settings=settingsLP, min=min), 1)
     end
 
     #An initial feasible point by performing Phase-I Simplex on the polyhedron

@@ -50,14 +50,18 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
     zB[U[B]] = u[U]
     AB = vcat(A[:, B], GE[:, B])
     bE = vcat(b, g[Eg]) - AB * zB
-    rb = getRows([AE bE], tol)
-    if length(getRows(AE, tol)) != length(rb)
+    #= rb = getRows([AE bE], tol)
+    if length(getRows(AE, tol)) != length(rb) =#
+    rb, lb = getRowsGJr([AE bE], tol)
+    if lb != length(rb)
         return false    #infeasible
     else
         AE = AE[rb, :]
         bE = bE[rb]
         AB = AB[rb, :]
     end
+
+
     K = sum(F)
     if K < size(AE, 1)    # impossible
         return false    # in our setting, size(AE, 1)>=1, hence skip K=0
@@ -345,8 +349,10 @@ function badK(S, PS, tol)    #infeasible to compute CL
     zB[U[B]] = u[U]
     AB = vcat(A[:, B], GE[:, B])
     bE = vcat(b, g[Eg]) - AB * zB
-    rb = getRows([AE bE], tol)
-    if length(getRows(AE, tol)) != length(rb)
+    #= rb = getRows([AE bE], tol)
+    if length(getRows(AE, tol)) != length(rb) =#
+    rb, lb = getRowsGJr([AE bE], tol)
+    if lb != length(rb)
         return true, -1    #infeasible
     else
         AE = AE[rb, :]
@@ -487,7 +493,7 @@ function ECL!(aCL::Vector{sCL{T}}, PS::Problem{T}; numSettings=Settings(PS), inc
             #degenerated
             if incL #dont go up if hit HMFP
                 #f = getfield(SimplexLP(PS; settings=settingsLP, min=false), 4)
-                f = PS.E' * getfield(SimplexLP(PS; settings=settingsLP, min=false), 3)
+                f = PS.E' * getfield(SimplexLP(PS; settings=settingsLP, min=false), 1)
                 mu = getMu(PS, t, incL)
                 if abs(mu - f) < tol  #hit HMFP=HVEP
                     break
@@ -514,7 +520,7 @@ end
 
 
 
-function nextS(t, incL, N)
+@inline function nextS(t, incL, N)
     S = copy(t.S)
     if incL
         q = t.I1
@@ -543,7 +549,7 @@ function nextS(t, incL, N)
 end
 
 
-function getMu(PS::Problem{T}, t, incL) where {T}
+@inline function getMu(PS::Problem{T}, t, incL) where {T}
     (; E, u, d, N) = PS
     z = zeros(T, N)
     S = @view t.S[1:N]
@@ -648,25 +654,24 @@ end
 
 """
 
-        SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=settings, settingsLP=SettingsLP(PS)) where T
+        SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsQP(PS), settingsLP=SettingsLP(PS)) where T
 
 compute the Critical Line Segments by Simplex method, for the highest expected return. Save the CL to aCL if done
 
-    settingsLP      : `SimplexLP.Settings`, for SimplexLP solver, we always first try the SimplexLP, and a chance of >=99.99% we find the critical line
+    settingsLP      :  for SimplexLP solver, we always first try the SimplexLP, and a chance of >=99.99% we find the critical line
                        when the remaining <=0.01%  happens (when the corner portfolio is degenerated, or infinite many solutions to SimplexLP encounted),
                        we use ASQP, which use LP to obtain an initial point, so no SettingsQP needed
 
-
 See also [`cbCL!`](@ref), [`Problem`](@ref), [`Settings`](@ref), [`SettingsQP`](@ref)
 """
-function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=settings, settingsLP=SettingsLP(PS), kwargs...) where {T}
+function SimplexCL!(aCL::Vector{sCL{T}}, PS::Problem{T}; nS=Settings(PS), settings=SettingsQP(PS), settingsLP=SettingsLP(PS), kwargs...) where {T}
     #HMEP, HMFP (Highest Mean Frontier Portfolio), or HVEP (Highest Variance Efficient Portfolio), >=99.9% hit
 
     (; u, d) = PS
     #(; tolS, muShft) = nS
     tolS = nS.tolS
 
-    S, iH, x = SimplexLP(PS; settings=settingsLP, min=false)
+    x, S, iH = SimplexLP(PS; settings=settingsLP, min=false)
     if iH == 0
         error("empty feasible region")
     end

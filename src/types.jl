@@ -3,6 +3,7 @@
 # see https://discourse.julialang.org/t/function-depending-on-the-global-variable-inside-module/64322/10
 
 
+#=
 """
 
         @enum Status
@@ -45,7 +46,7 @@ struct Event{T<:AbstractFloat}
     L::T
 end
 
-
+=#
 
 """
 
@@ -152,7 +153,12 @@ function Problem(E::Vector{T}, V; N=length(E),
     Eq = copy(vec(E))     #make sure vector and a new copy
     Vq = convert(Matrix{T}, (V + V') / 2)   #make sure symmetric
     #@assert det(Vq)>=-sqrt(eps(T)) "variance matrix has negative determinant"
-    @assert det(Vq) >= 0 "variance matrix has negative determinant"
+    if T == BigFloat
+        @assert det(Vq) >= 0 "variance matrix has negative determinant"
+    else
+        @assert eigmin(Vq) > -sqrt(eps(T)) "variance matrix is not positive-semidefinite"
+    end
+
     #REMARK: we do NOT convert Gz  ≤ g into Gz +s = g, to make sure V>0
     eE::T = one(T)
     eV::T = one(T)
@@ -176,9 +182,8 @@ function Problem(E::Vector{T}, V; N=length(E),
     sum(abs.(A[1, :] .- b[1])) == 0 || error("First equality constraint must be 1'z = 1")
 
     #check feasibility and redundancy of Ax=b
-    rb = rank([A b])
+    rb = rank([A vec(b)])
     @assert rb == rank(A) "infeasible: Ax=b"
-    #@assert rb == length(getRows(A)) "redundant rows in Ax=b"
     @assert M == rb "redundant rows in Ax=b"       #full row rank
 
 
@@ -191,7 +196,6 @@ function Problem(E::Vector{T}, V; N=length(E),
 
 
     iu = u .< d
-    #u[iu] .= d[iu]   #make sure u >= d
     if sum(iu) > 0
         @warn "swap the elements where u < d, to make sure u > d"
         t = u[iu]
@@ -310,44 +314,8 @@ struct sEF    #Efficient Frontier       Float64 is OK
     ic::Vector{Int}
 end
 
-#=
-"""
-
-        OOQP(P::Problem)
-
-Pack `P::Problem` into OOQP object
-
-See also  [`LightenQP.OOQP`](@ref)
-
-"""
-function OOQP(P::Problem{T}) where {T}
-    #Pack P into OOQP
-    (; E, V, u, d, G, g, A, b, N, M, J) = P
-    iu = findall(u .< Inf)
-    C = [G; -Matrix{T}(I, N, N); Matrix{T}(I, N, N)[iu, :]]
-    gq = [g; -d; u[iu]]
-    L = J + N + length(iu)
-    OOQP{T}(V, A, C, E, b, gq, N, M, L)
-end
-=#
 
 
-
-#=
-"""
-
-    SettingsQP(P::Problem; kwargs...)
-
-Settings for `LightenQP`'s numerical solver Settings
-
-See also  [`LightenQP.Settings`](@ref)
-
-"""
-function SettingsQP(P::Problem{T}; kwargs...) where {T}
-    LightenQP.Settings{T}(; kwargs...)
-    #SettingsQP{T}(; kwargs...)
-end
-=#
 
 """
 
@@ -355,11 +323,11 @@ end
 
 Settings for `SSQP`'s Status Switching solver Settings
 
-See also  [`SSQP.Settings`](@ref)
+See also  [`StatusSwitchingQP.Settings`](@ref)
 
 """
 function SettingsQP(P::Problem{T}; kwargs...) where {T}
-    SSQP.Settings{T}(; kwargs...)
+    SS.Settings{T}(; kwargs...)
 end
 
 
@@ -370,10 +338,9 @@ end
 
 Settings for `SimplexLP`'s numerical solver Settings
 
-See also  [`EfficientFrontier.Simplex.Settings`](@ref)
+See also  [`StatusSwitchingQP.Settings`](@ref)
 
 """
 function SettingsLP(P::Problem{T}; kwargs...) where {T}
-    #Settings{typeof(P).parameters[1]}(; kwargs...)
-    Simplex.Settings{T}(; kwargs...)
+    SS.Settings{T}(; kwargs...)
 end
