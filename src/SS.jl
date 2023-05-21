@@ -91,7 +91,8 @@ end
 function QP(P::Problem{T}, L::T=0.0) where {T}
     (; E, V, u, d, G, g, A, b, N, M, J) = P
     q = -L * E
-    return QP(V, A, G, q, b, g, d, u, N, M, J)
+    mc = 1
+    return QP(V, A, G, q, b, g, d, u, N, M, J, mc)
 end
 
 function QP(mu::T, P::Problem{T}) where {T}
@@ -100,5 +101,6 @@ function QP(mu::T, P::Problem{T}) where {T}
     M += 1
     Am = [A; E']
     bm = [b; mu]
-    return QP(V, Am, G, q, bm, g, d, u, N, M, J)
+    mc = 1
+    return QP(V, Am, G, q, bm, g, d, u, N, M, J, mc)
 end
