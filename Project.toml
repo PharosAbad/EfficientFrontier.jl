@@ -14,7 +14,7 @@ StatusSwitchingQP = "73a7d86c-03e3-42fb-a0f5-70ef6cda08f4"
 [compat]
 Combinatorics = "1"
 PrecompileTools = "1"
-StatusSwitchingQP = "0.2.5 - 0"
+StatusSwitchingQP = "0.2.5 - 1"
 julia = "1.8"
 
 [extras]
