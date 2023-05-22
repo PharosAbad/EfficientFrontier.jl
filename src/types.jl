@@ -181,10 +181,12 @@ function Problem(E::Vector{T}, V; N=length(E),
     #norm(A[1,:] .- b[1]) == 0 || error("First equality constraint must be 1'z = 1")
     sum(abs.(A[1, :] .- b[1])) == 0 || error("First equality constraint must be 1'z = 1")
 
+    #=  leave it to SimplexLP
     #check feasibility and redundancy of Ax=b
     rb = rank([A vec(b)])
     @assert rb == rank(A) "infeasible: Ax=b"
     @assert M == rb "redundant rows in Ax=b"       #full row rank
+    =#
 
 
     #d[isinf.(d)] .= -1.0    #replace -Inf in lower bound by -1.0
