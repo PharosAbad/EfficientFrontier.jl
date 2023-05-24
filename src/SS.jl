@@ -53,7 +53,46 @@ function SimplexLP(PS::Problem{T}; settings=SettingsLP(PS), min=true) where {T}
     #display("--- --- phase 2 --- ---")
     q = x[B]
     ia = findall(B .> Ns)
-    n = length(ia)
+    m = length(ia)
+
+    while m > 0
+        F = trues(Ns)
+        F[B[B.<=Ns]] .= false
+        Y = invB * As[:, F]
+        l = B[end] - Ns
+        if rank(Y) < Ms     # purge redundant row
+            ir = trues(Ms)
+            ir[l] = false
+            Ms -= 1
+            As = As[ir, :]
+            bs = bs[ir]
+            A1 = A1[ir, :]
+            B = B[1:end-1]
+            invB = inv(lu(A1[:, B]))
+            q = q[1:end-1]
+        else    #AV go out, replace by x[k]
+            r = findfirst(abs.(Y[l, :]) .>= tol)
+            k = findall(F)[r]
+            B[end] = k
+            ib = sortperm(B)
+            B = B[ib]
+            invB = inv(lu(A1[:, B]))
+            q[end] = x[k]
+            q = q[ib]
+            S[k] = IN
+        end
+        ia = findall(B .> Ns)
+        m = length(ia)
+    end
+
+    S = S[1:Ns]
+    if !min
+        Es = -Es
+    end
+    iH, x, invB = solveLP(Es, As, bs, ds, us, B, S; invB=invB, q=q, tol=tol)
+
+
+    #= n = length(ia)
     if n == 0
         S = S[1:Ns]
         if !min
@@ -76,7 +115,7 @@ function SimplexLP(PS::Problem{T}; settings=SettingsLP(PS), min=true) where {T}
             c1 = -c1
         end
         iH, x, invB = solveLP(c1, A1, b1, d1, u1, B, S; invB=invB, q=q, tol=tol)
-    end
+    end =#
 
     for k in N+1:N+J
         S[k] = S[k] == IN ? OE : EO
