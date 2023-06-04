@@ -370,6 +370,118 @@ function joinCL(P::Problem{T}, S; incL=false, settingsLP=SettingsLP(P)) where {T
     (; V, E, u, d, G, A, N, M, J) = P
     (; tol, rule) = settingsLP
 
+    solveLP = cDantzigLP
+    if rule == :maxImprovement
+        solveLP = maxImprvLP
+    end
+
+    Sv = @view S[1:N]
+    F = (Sv .== IN)
+    B = .!F
+    U = (Sv .== UP)
+    Se = @view S[(N.+(1:J))]
+    Eg = (Se .== EO)
+
+    z = copy(d)
+    z[U] = u[U]
+    GE = @view G[Eg, :]
+    JE = size(GE, 1)
+
+    N0 = N + JE + 1 + 2 * M
+    M0 = N
+    c0 = zeros(T, N0)
+    c0[N+JE+1] = 1.0
+    A0 = [Matrix{T}(I, N, N) -GE' E A' -A']     # NO redundant row
+    b0 = V * z
+    d0 = zeros(T, N0)
+    u0 = fill(Inf, N0)
+
+    for k in 1:M0
+        if U[k]
+            A0[k, k] = -1.0
+        end
+    end
+
+
+    S1 = fill(DN, M0 + N0)
+    B = collect(N0 .+ (1:M0))
+    S1[B] .= IN
+    invB = Matrix{T}(I, M0, M0)
+    A1 = [A0 invB]
+    c1 = [zeros(T, N0); fill(one(T), M0)]   #灯塔的　模型　是　min
+    b1 = b0
+    d1 = [d0; zeros(T, M0)]
+    u1 = [u0; fill(Inf, M0)]
+    q = A0 * d0
+    for j in 1:M0
+        invB[j, j] = b0[j] >= q[j] ? one(T) : -one(T)
+    end
+    q = abs.(q - b0)
+    iH, x, invB = solveLP(c1, A1, b1, d1, u1, B, S1; invB=invB, q=q, tol=tol)
+
+    f = sum(x[N0+1:end])
+    if f > tol
+        error("empty feasible region")
+    end
+
+    q = x[B]
+    ia = findall(B .> N0)
+    m = length(ia)
+
+    while m > 0     #AV in the basis
+        F = trues(N0)
+        F[B[B.<=N0]] .= false
+        Y = invB * A0[:, F]
+        l = B[end] - N0
+        #no redundant row to purge
+        #AV go out, replace by x[k]
+        r = findfirst(abs.(Y[l, :]) .>= tol)
+        k = findall(F)[r]
+        B[end] = k
+        ib = sortperm(B)
+        B = B[ib]
+        invB = inv(lu(A1[:, B]))
+        q[end] = x[k]
+        q = q[ib]
+        S1[k] = IN
+        ia = findall(B .> N0)
+        m = length(ia)
+    end
+
+    #display("--- --- phase 2 --- ---")
+    S1 = S1[1:N0]
+    if incL
+        c0 = -c0
+    end
+
+    iH, x, invB = solveLP(c0, A0, b0, d0, u0, B, S1; invB=invB, q=q, tol=tol)
+
+    f = x[N+JE+1]
+    if incL
+        f = -f
+    end
+
+
+    idE = findall(Eg)
+    for k in 1:N+JE
+        if abs(x[k]) < tol
+            if k <= N
+                S[k] = IN
+            else
+                ik = idE[k-N] + N
+                S[ik] = OE
+            end
+        end
+    end
+
+    return f, S
+end
+
+#=
+function joinCL(P::Problem{T}, S; incL=false, settingsLP=SettingsLP(P)) where {T}
+    (; V, E, u, d, G, A, N, M, J) = P
+    (; tol, rule) = settingsLP
+
 
     solveLP = cDantzigLP
     if rule == :maxImprovement
@@ -458,7 +570,7 @@ function joinCL(P::Problem{T}, S; incL=false, settingsLP=SettingsLP(P)) where {T
 
     return f, S #, iH
 end
-
+=#
 
 """
 
