@@ -52,9 +52,26 @@ function SimplexLP(PS::Problem{T}; settings=SettingsLP(PS), min=true) where {T}
 
     #display("--- --- phase 2 --- ---")
     q = x[B]
+
+    # driving out AV using getRowsGJr
+    ib = findall(B .<= Ns)
+    m = length(ib)
+    if m < Ms
+        iB = B[ib]
+        F = trues(Ns)
+        F[iB] .= false
+        iF = findall(F)
+        ic = [iB; iF]
+        ra, la = getRowsGJr(As[:, ic]', tol)
+        B = sort(ic[ra])
+        iA = setdiff(B, iB)
+        invB = inv(lu(As[:, B]))
+        S[iA] .= IN
+        q = x[B]
+    end
+    #=
     ia = findall(B .> Ns)
     m = length(ia)
-
     while m > 0
         F = trues(Ns)
         F[B[B.<=Ns]] .= false
@@ -84,6 +101,7 @@ function SimplexLP(PS::Problem{T}; settings=SettingsLP(PS), min=true) where {T}
         ia = findall(B .> Ns)
         m = length(ia)
     end
+    =#
 
     S = S[1:Ns]
     if !min

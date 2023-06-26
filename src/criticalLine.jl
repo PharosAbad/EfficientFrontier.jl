@@ -425,9 +425,27 @@ function joinCL(P::Problem{T}, S; incL=false, settingsLP=SettingsLP(P)) where {T
     end
 
     q = x[B]
+
+    #driving out AV using getRowsGJr
+    ib = findall(B .<= N0)
+    m = length(ib)
+    if m < M0
+        iB = B[ib]
+        F = trues(N0)
+        F[iB] .= false
+        iF = findall(F)
+        ic = [iB; iF]
+        #ra, la = getRowsGJr(copy(A0[:, ic]'), tol)
+        ra, la = getRowsGJr(A0[:, ic]', tol)
+        B = sort(ic[ra])
+        iA = setdiff(B, iB)
+        invB = inv(lu(A0[:, B]))
+        S[iA] .= IN
+        q = x[B]
+    end
+    #=
     ia = findall(B .> N0)
     m = length(ia)
-
     while m > 0     #AV in the basis
         F = trues(N0)
         F[B[B.<=N0]] .= false
@@ -447,6 +465,7 @@ function joinCL(P::Problem{T}, S; incL=false, settingsLP=SettingsLP(P)) where {T
         ia = findall(B .> N0)
         m = length(ia)
     end
+    =#
 
     #display("--- --- phase 2 --- ---")
     S1 = S1[1:N0]
