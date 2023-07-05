@@ -205,9 +205,17 @@ function computeCL!(aCL::Vector{sCL{T}}, S::Vector{Status}, PS::Problem{T}, nS::
         for j in 1:JE
             k = iE[j]
             if k == 0
+                @warn "redundant rows in [A_{I}; G_{EI}]"
+
+                #=
                 x = AE' \ GE[j, F]
                 Lda[j] = alphaL' * x
                 Ldb[j] = betaL' * x
+                =#
+                #hope this will tract IN or OUT, on L0 or L1, not both
+                GEF = GE[j, F]'
+                Lda[j] = g[Eg][j] - GE[j, B]' * zB - GEF * alpha
+                Ldb[j] = -GEF * beta
             else
                 Lda[j] = alphaL[k]
                 Ldb[j] = betaL[k]
@@ -373,6 +381,8 @@ function joinCL(P::Problem{T}, S; incL=false, settingsLP=SettingsLP(P)) where {T
     solveLP = cDantzigLP
     if rule == :maxImprovement
         solveLP = maxImprvLP
+    elseif rule == :stpEdgeLP
+        solveLP = stpEdgeLP
     end
 
     Sv = @view S[1:N]

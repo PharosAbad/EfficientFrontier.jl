@@ -1,5 +1,5 @@
 #imported functions
-using StatusSwitchingQP.Simplex: cDantzigLP, maxImprvLP
+using StatusSwitchingQP.Simplex: cDantzigLP, maxImprvLP, stpEdgeLP
 
 """
 
@@ -17,6 +17,8 @@ function SimplexLP(PS::Problem{T}; settings=SettingsLP(PS), min=true) where {T}
     solveLP = cDantzigLP
     if rule == :maxImprovement
         solveLP = maxImprvLP
+    elseif rule == :stpEdgeLP
+        solveLP = stpEdgeLP
     end
 
     Ms = M + J

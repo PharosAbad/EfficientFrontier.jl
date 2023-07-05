@@ -9,7 +9,7 @@ using Polynomials
 using EfficientFrontier: EfficientFrontier, Problem, Status, Event, sCL, IN, DN, UP, OE, EO, computeCL!, Settings, SettingsLP
 export solveASQP, asQP, asCL!, getSx
 
-using StatusSwitchingQP.Simplex: cDantzigLP, maxImprvLP
+using StatusSwitchingQP.Simplex: cDantzigLP, maxImprvLP, stpEdgeLP
 
 
 mutable struct UpdatableQR{T} <: Factorization{T}
@@ -614,6 +614,8 @@ function asQP(PS::Problem{T}, L::T=0.0; settingsLP=SettingsLP(PS)) where {T}
     solveLP = cDantzigLP
     if rule == :maxImprovement
         solveLP = maxImprvLP
+    elseif rule == :stpEdgeLP
+        solveLP = stpEdgeLP
     end
 
     #An initial feasible point by performing Phase-I Simplex on the polyhedron
@@ -669,6 +671,8 @@ function asQP(mu::T, PS::Problem{T}; settingsLP=SettingsLP(PS)) where {T}
     solveLP = cDantzigLP
     if rule == :maxImprovement
         solveLP = maxImprvLP
+    elseif rule == :stpEdgeLP
+        solveLP = stpEdgeLP
     end
 
     if isinf(mu)
